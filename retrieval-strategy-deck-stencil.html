@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beyond the Baseline — Retrieval Strategy · Stencil &amp; Tablet</title>
+
+<!-- ===========================================================
+     FONTS — Stencil & Tablet face ladder
+     Stardos Stencil  = every headline + numeral (display)
+     Bowlby One       = the single 320px quote-mark glyph
+     Barlow Condensed = all uppercase chrome / labels / pills
+     Inter            = sentence-case body (the quiet voice)
+     =========================================================== -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Stardos+Stencil:wght@400;700&family=Bowlby+One&family=Barlow+Condensed:wght@500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* ===========================================================
+   CSS CUSTOM PROPERTIES (THEME)
+   The Stencil & Tablet palette: bone + black, energized by a
+   seven-colour retro-print accent set. Change these to retheme
+   the whole deck. No gradients, no shadows — flat colour blocks.
+   =========================================================== */
+:root{
+  --bone:#E2DCC9;      /* default page field (warm cream) */
+  --black:#000000;     /* dark field (agenda / divider / close) */
+  --ink:#0A0A0A;       /* text on light surfaces */
+  --paper:#F4EFE0;     /* lighter cream for tables / frames */
+  --sienna:#A06A3C;    /* warm brown-orange */
+  --magenta:#C73B7A;   /* loudest warm accent */
+  --orange:#EE7A2E;    /* the most-used accent */
+  --teal:#2D7E73;      /* cool counterpart to orange */
+  --blue:#3F73B7;      /* mid-tone process blue */
+  --mustard:#D8A93B;   /* action bars / partial pills */
+  --olive:#6F7A2E;     /* least-used accent / variety */
+
+  /* Letterbox frame colour (the area around the 16:9 stage) */
+  --stage-bg:#17130c;
+  --slide-bg:var(--bone);
+
+  --ff-disp:"Stardos Stencil", serif;              /* headlines + numerals */
+  --ff-quote:"Bowlby One","Stardos Stencil",serif; /* quote-mark only */
+  --ff-chrome:"Barlow Condensed", sans-serif;      /* chrome / labels */
+  --ff-body:"Inter", sans-serif;                   /* body */
+
+  --ease:cubic-bezier(0.16,1,0.3,1);
+  --dur:0.62s;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+/* ===========================================================
+   FIXED 16:9 STAGE — viewport-base.css (included in full,
+   mandatory). Slides authored at 1920×1080, scaled as a whole.
+   =========================================================== */
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--stage-bg,#000);}
+.deck-viewport{position:fixed;inset:0;overflow:hidden;background:var(--stage-bg,#000);}
+.deck-stage{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;transform-origin:0 0;background:var(--slide-bg,#fff);}
+.slide{position:absolute;inset:0;width:1920px;height:1080px;overflow:hidden;display:block;visibility:hidden;opacity:0;pointer-events:none;background:var(--slide-bg,#fff);}
+.slide.active,.slide.visible{visibility:visible;opacity:1;pointer-events:auto;z-index:1;}
+img,video,canvas,svg{max-width:100%;max-height:100%;}
+.deck-controls{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:1000;}
+@media print{
+  html,body{width:1920px;height:auto;overflow:visible;background:#fff;}
+  .deck-viewport{position:static;overflow:visible;background:#fff;}
+  .deck-stage{position:static;width:auto;height:auto;transform:none !important;background:none;}
+  .slide{position:relative;display:block !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;width:1920px;height:1080px;break-after:page;page-break-after:always;}
+  .slide:last-child{break-after:auto;page-break-after:auto;}
+  .deck-controls{display:none !important;}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:0.01ms !important;transition-duration:0.2s !important;}
+}
+
+/* ===========================================================
+   FIELD VARIANTS
+   Bone is the default; dark slides flip the field to black and
+   the type to bone (the system's only inversion).
+   =========================================================== */
+.slide{background:var(--bone);color:var(--ink);}
+.slide.dark{background:var(--black);color:var(--bone);}
+
+/* ===========================================================
+   CHROME — top bar + footer at fixed offsets (non-negotiable)
+   top: 48px/64px · bottom: 36px/64px · uppercase Barlow
+   =========================================================== */
+.top{position:absolute;top:48px;left:64px;right:64px;display:flex;align-items:center;justify-content:space-between;
+  font-family:var(--ff-chrome);font-weight:800;font-size:30px;letter-spacing:.05em;text-transform:uppercase;line-height:1;color:inherit;}
+.top .tr{font-weight:700;font-size:23px;letter-spacing:.1em;opacity:.78;}
+.footer{position:absolute;bottom:36px;left:64px;right:64px;display:flex;align-items:center;justify-content:space-between;
+  font-family:var(--ff-chrome);font-weight:600;font-size:22px;letter-spacing:.08em;text-transform:uppercase;opacity:.7;color:inherit;}
+
+/* The working content frame: inset below the top bar, above footer */
+.wrap{position:absolute;left:64px;right:64px;top:122px;bottom:82px;display:flex;flex-direction:column;}
+
+/* ===========================================================
+   HEADLINES + LEAD
+   =========================================================== */
+.eyebrow{font-family:var(--ff-chrome);font-weight:800;font-size:23px;letter-spacing:.14em;text-transform:uppercase;opacity:.82;}
+.h-page{font-family:var(--ff-disp);font-weight:700;font-size:80px;line-height:.92;letter-spacing:-.01em;text-transform:uppercase;}
+.h-sm{font-family:var(--ff-disp);font-weight:700;font-size:60px;line-height:.94;letter-spacing:-.01em;text-transform:uppercase;}
+.lead{font-family:var(--ff-body);font-weight:400;font-size:23px;line-height:1.42;max-width:1480px;}
+.lead .em{font-family:var(--ff-chrome);font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:24px;}
+.head-block{display:flex;flex-direction:column;gap:14px;}
+
+/* ===========================================================
+   TABLET / CARD SYSTEM — flat colour blocks, rounded corners.
+   Fill utilities set background + correct text colour:
+   warm fills -> ink ; cool/dark fills + magenta -> bone.
+   =========================================================== */
+.fill-bone{background:var(--bone);color:var(--ink);}
+.fill-paper{background:var(--paper);color:var(--ink);}
+.fill-sienna{background:var(--sienna);color:var(--ink);}
+.fill-orange{background:var(--orange);color:var(--ink);}
+.fill-mustard{background:var(--mustard);color:var(--ink);}
+.fill-olive{background:var(--olive);color:var(--ink);}
+.fill-magenta{background:var(--magenta);color:var(--bone);}
+.fill-teal{background:var(--teal);color:var(--bone);}
+.fill-blue{background:var(--blue);color:var(--bone);}
+.fill-ink{background:var(--ink);color:var(--bone);}
+
+.card{border-radius:22px;padding:26px 26px;display:flex;flex-direction:column;position:relative;overflow:hidden;}
+.tablet{border-radius:26px;padding:30px 28px 26px;display:flex;flex-direction:column;position:relative;overflow:hidden;}
+
+.card-h3{font-family:var(--ff-disp);font-weight:700;font-size:30px;line-height:1.04;text-transform:uppercase;letter-spacing:.005em;}
+.card-tag{font-family:var(--ff-chrome);font-weight:800;font-size:20px;letter-spacing:.1em;text-transform:uppercase;opacity:.8;}
+.bd{font-family:var(--ff-body);font-weight:400;font-size:20px;line-height:1.4;}
+.bd-sm{font-family:var(--ff-body);font-weight:400;font-size:18px;line-height:1.42;}
+.bd .k{font-family:var(--ff-chrome);font-weight:800;text-transform:uppercase;letter-spacing:.03em;font-size:19px;}
+
+/* Giant numeral inside a tablet (the tablet's defining feature) */
+.num{font-family:var(--ff-disp);font-weight:700;line-height:.85;letter-spacing:-.02em;}
+.num-mark{margin-top:auto;}
+
+/* Stat numeral + Barlow superscript suffix */
+.stat{display:flex;flex-direction:column;}
+.stat .n{font-family:var(--ff-disp);font-weight:700;line-height:.85;letter-spacing:-.02em;}
+.stat .suf{font-family:var(--ff-chrome);font-weight:800;font-size:38px;vertical-align:top;letter-spacing:.01em;}
+.stat .lab{font-family:var(--ff-chrome);font-weight:700;font-size:20px;letter-spacing:.07em;text-transform:uppercase;margin-top:8px;opacity:.92;}
+
+/* ===========================================================
+   ACTION BAR — mustard callout running across a slide
+   =========================================================== */
+.action{background:var(--mustard);color:var(--ink);border-radius:22px;padding:22px 30px;display:flex;align-items:center;gap:26px;}
+.action .tag{font-family:var(--ff-chrome);font-weight:800;font-size:23px;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;}
+.action .rule{width:2px;align-self:stretch;background:var(--ink);opacity:.55;}
+.action .ah{font-family:var(--ff-disp);font-weight:700;font-size:40px;text-transform:uppercase;line-height:1;letter-spacing:-.01em;}
+.action .conf{margin-left:auto;font-family:var(--ff-chrome);font-weight:800;font-size:20px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;opacity:.85;}
+
+/* ===========================================================
+   MATRIX TABLE — paper fill, 1.5px ink hairlines, black head row
+   =========================================================== */
+.matrix{width:100%;border-collapse:collapse;background:var(--paper);border-radius:18px;overflow:hidden;table-layout:fixed;}
+.matrix th,.matrix td{border:1.5px solid rgba(10,10,10,.32);padding:14px 20px;text-align:left;vertical-align:middle;}
+.matrix thead th{background:var(--ink);color:var(--bone);font-family:var(--ff-disp);font-weight:700;font-size:23px;letter-spacing:.015em;text-transform:uppercase;}
+.matrix tbody .rl{font-family:var(--ff-disp);font-weight:700;font-size:25px;letter-spacing:.005em;text-transform:uppercase;}
+.matrix td.cell{font-family:var(--ff-body);font-weight:400;font-size:19px;line-height:1.34;color:var(--ink);}
+.matrix tbody tr:last-child td{border-bottom:none;}
+.matrix .num-cell{font-family:var(--ff-disp);font-weight:700;font-size:26px;letter-spacing:-.01em;text-align:center;}
+.matrix tr.win td{background:rgba(45,126,115,.20);}
+.matrix tr.win .rl, .matrix tr.win .num-cell{color:var(--teal);}
+
+/* Status pills (matrix convention: teal=yes mustard=partial magenta=no paper=note) */
+.pill{display:inline-block;border-radius:999px;padding:6px 16px;font-family:var(--ff-chrome);font-weight:700;font-size:18px;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;}
+.pill.yes{background:var(--teal);color:var(--bone);}
+.pill.partial{background:var(--mustard);color:var(--ink);}
+.pill.no{background:var(--magenta);color:var(--bone);}
+.pill.note{background:var(--paper);color:var(--ink);border:1.5px solid var(--ink);}
+
+/* ===========================================================
+   PROCESS NODES — ordinal + h3 + body, with arrow connectors
+   =========================================================== */
+.proc{display:flex;gap:20px;align-items:stretch;}
+.node{flex:1;border-radius:22px;padding:24px 22px 22px;display:flex;flex-direction:column;position:relative;overflow:visible;}
+.node .ord{font-family:var(--ff-disp);font-weight:700;font-size:62px;line-height:.9;letter-spacing:-.02em;}
+.node .nh{font-family:var(--ff-disp);font-weight:700;font-size:25px;text-transform:uppercase;line-height:1.05;margin-top:4px;}
+.node .nb{font-family:var(--ff-body);font-weight:400;font-size:18px;line-height:1.38;margin-top:10px;}
+.node .arr{position:absolute;right:-24px;top:50%;transform:translateY(-50%);font-family:var(--ff-disp);font-weight:700;font-size:34px;color:var(--ink);z-index:2;}
+.node:last-child .arr{display:none;}
+
+/* Timeline bar (paper) running along the bottom of a process row */
+.timeline{background:var(--paper);border-radius:14px;height:48px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;}
+.timeline span{font-family:var(--ff-chrome);font-weight:700;font-size:19px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink);}
+
+/* Inline flow chips (for routing / architecture rows) */
+.flowrow{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.chip{border-radius:14px;padding:14px 20px;font-family:var(--ff-disp);font-weight:700;font-size:24px;text-transform:uppercase;letter-spacing:-.005em;}
+.flowrow .ar{font-family:var(--ff-disp);font-weight:700;font-size:30px;opacity:.75;}
+
+/* ===========================================================
+   COVER (slide 1)
+   =========================================================== */
+.s-cover .stage-pad{position:absolute;inset:0;padding:56px 64px 52px;display:grid;grid-template-rows:auto 1fr auto;}
+.s-cover .super{font-family:var(--ff-chrome);font-weight:800;font-size:27px;letter-spacing:.12em;text-transform:uppercase;opacity:.8;display:flex;gap:18px;align-items:center;}
+.s-cover .super .dot{width:12px;height:12px;border-radius:3px;background:var(--orange);}
+.s-cover .hero{font-family:var(--ff-disp);font-weight:700;font-size:208px;line-height:.84;letter-spacing:-.015em;text-transform:uppercase;align-self:center;}
+.s-cover .hero .o{color:var(--orange);}
+.s-cover .lower{display:flex;flex-direction:column;gap:26px;}
+.s-cover .sub{font-family:var(--ff-body);font-weight:400;font-size:24px;line-height:1.4;max-width:1200px;}
+.s-cover .chips{display:flex;gap:20px;}
+.s-cover .chips .tablet{flex:1;max-width:360px;padding:22px 24px;}
+.s-cover .chips .stat .n{font-size:104px;}
+.s-cover .row{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;}
+.s-cover .lockup{display:flex;align-items:center;gap:18px;}
+.s-cover .mark{width:56px;height:56px;border-radius:14px;background:var(--orange);}
+.s-cover .who .nm{font-family:var(--ff-chrome);font-weight:700;font-size:30px;text-transform:uppercase;letter-spacing:.04em;line-height:1.1;}
+.s-cover .who .st{font-family:var(--ff-chrome);font-weight:600;font-size:21px;text-transform:uppercase;letter-spacing:.06em;opacity:.7;}
+.s-cover .date{font-family:var(--ff-disp);font-weight:700;font-size:36px;text-transform:uppercase;letter-spacing:.01em;}
+
+/* ===========================================================
+   AGENDA (slide 13) — dark field, organic blobs behind items
+   =========================================================== */
+.s-agenda{padding:0;}
+.s-agenda .grid{position:absolute;left:64px;right:64px;top:236px;bottom:88px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:26px;}
+.s-agenda .item{position:relative;display:flex;flex-direction:column;justify-content:center;padding:30px 34px;overflow:hidden;}
+.s-agenda .blob{position:absolute;inset:0;width:100%;height:100%;z-index:0;}
+.s-agenda .item .inner{position:relative;z-index:1;}
+.s-agenda .item .bn{font-family:var(--ff-disp);font-weight:700;font-size:28px;letter-spacing:.04em;text-transform:uppercase;opacity:.85;color:var(--ink);}
+.s-agenda .item .bh{font-family:var(--ff-disp);font-weight:700;font-size:36px;line-height:1.0;text-transform:uppercase;letter-spacing:-.01em;color:var(--ink);margin-top:4px;}
+.s-agenda .item .bd2{font-family:var(--ff-body);font-weight:400;font-size:18px;line-height:1.34;color:var(--ink);margin-top:8px;opacity:.92;max-width:420px;}
+
+/* ===========================================================
+   QUOTE / STATEMENT PANEL (best-pick accent)
+   =========================================================== */
+.panel{border-radius:26px;padding:42px 50px;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;}
+.qmark{font-family:var(--ff-quote);font-size:240px;line-height:.7;position:absolute;opacity:.20;}
+.statement{font-family:var(--ff-disp);font-weight:700;font-size:60px;line-height:1.02;letter-spacing:-.01em;text-transform:uppercase;}
+
+/* ===========================================================
+   ANIMATION — single orchestrated load per slide (staggered)
+   Flat depth is preserved; only entrance motion is animated.
+   =========================================================== */
+.reveal{opacity:0;transform:translateY(26px);transition:opacity var(--dur) var(--ease),transform var(--dur) var(--ease);}
+.slide.visible .reveal{opacity:1;transform:none;transition-delay:calc(var(--i,0) * .07s);}
+
+/* ===========================================================
+   EDIT MODE + PROGRESS CHROME (outside the stage)
+   =========================================================== */
+.edit-hotzone{position:fixed;top:0;left:0;width:80px;height:80px;z-index:10000;cursor:pointer;}
+.edit-toggle{position:fixed;top:18px;left:18px;width:46px;height:46px;border-radius:12px;border:none;cursor:pointer;
+  background:var(--orange);color:#fff;font-size:20px;opacity:0;pointer-events:none;transition:opacity .3s ease;z-index:10001;}
+.edit-toggle.show,.edit-toggle.active{opacity:1;pointer-events:auto;}
+.edit-toggle.active{background:var(--teal);}
+.editing [contenteditable="true"]{outline:2px dashed rgba(238,122,46,.7);outline-offset:3px;border-radius:4px;}
+.edit-bar{position:fixed;top:18px;left:74px;display:none;gap:10px;z-index:10001;font-family:var(--ff-chrome);}
+.edit-bar.show{display:flex;}
+.edit-bar button{border:none;border-radius:10px;padding:8px 16px;font-family:var(--ff-chrome);font-weight:700;font-size:14px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;background:var(--ink);color:var(--bone);}
+
+.deck-progress{position:fixed;left:0;bottom:0;height:5px;background:var(--orange);z-index:1000;transition:width .35s var(--ease);}
+.pageind{position:fixed;right:22px;bottom:18px;z-index:1000;font-family:var(--ff-chrome);font-weight:800;font-size:18px;letter-spacing:.1em;text-transform:uppercase;color:var(--bone);opacity:.55;}
+</style>
+</head>
+<body>
+<div class="deck-viewport">
+  <main class="deck-stage" id="deckStage">
+
+    <!-- ============================================================
+         SLIDE 1 · COVER
+         ============================================================ -->
+    <section class="slide title-slide s-cover active" data-label="Cover">
+      <div class="stage-pad">
+        <div class="super reveal" style="--i:0"><span class="dot"></span>PRODUCTION RAG · 2025–2026<span style="opacity:.5">//</span>INTERNAL REVIEW · 2026·06·10</div>
+        <h1 class="hero reveal" style="--i:1">BEYOND THE<br><span class="o">BASELINE.</span></h1>
+        <div class="lower">
+          <p class="sub reveal" style="--i:2">Two deep-research reports reconciled against the benchmark evidence — and the consolidated retrieval plan for the Salesforce Knowledge corpus on Azure AI Search.</p>
+          <div class="chips reveal" style="--i:3">
+            <div class="tablet fill-orange"><div class="stat"><span class="n">0.816</span><span class="lab">Recall@5 · hybrid + reranker</span></div></div>
+            <div class="tablet fill-teal"><div class="stat"><span class="n">+16<span class="suf">pts</span></span><span class="lab">Agentic · complex queries</span></div></div>
+            <div class="tablet fill-magenta"><div class="stat"><span class="n">3/6</span><span class="lab">Survey picks overturned</span></div></div>
+          </div>
+          <div class="row reveal" style="--i:4">
+            <div class="lockup">
+              <div class="mark"></div>
+              <div class="who"><div class="nm">Retrieval Strategy</div><div class="st">Salesforce Knowledge · Azure AI Search · EN / FR</div></div>
+            </div>
+            <div class="date">01 / 20</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 2 · THE BRIEF
+         ============================================================ -->
+    <section class="slide" data-label="The brief">
+      <div class="top"><span>Retrieval Strategy · 00</span><span class="tr">Context</span></div>
+      <div class="wrap">
+        <div class="head-block reveal" style="--i:0">
+          <div class="eyebrow">The brief</div>
+          <h2 class="h-page">A strong baseline —<br>and one question.</h2>
+        </div>
+        <p class="lead reveal" style="--i:1;margin-top:18px">A bilingual enterprise knowledge chatbot over a Salesforce Knowledge dump, indexed in Azure AI Search. The planned stack is already 2024-grade best practice. The question: <span class="em">what demonstrably beats it in production?</span></p>
+        <div style="display:flex;gap:24px;margin-top:26px;flex:1;">
+          <div class="card fill-sienna reveal" style="--i:2;flex:1;">
+            <div class="card-tag">The corpus</div>
+            <div class="card-h3" style="margin-top:10px">~4,867 article versions</div>
+            <p class="bd-sm" style="margin-top:12px">EN (3,013) / FR (1,854). HTML→Markdown bodies, rich metadata: business unit, persona, product family, category, LLM-extracted entities, FAQs &amp; summaries.</p>
+          </div>
+          <div class="card fill-teal reveal" style="--i:3;flex:1;">
+            <div class="card-tag">The baseline</div>
+            <div class="card-h3" style="margin-top:10px">2024 best practice</div>
+            <p class="bd-sm" style="margin-top:12px">Heading-aware chunking · hybrid BM25 + vector with RRF · Azure semantic reranker · scoring profiles · synonym maps · parent–child · query rewrite + HyDE + multi-query · LLM rerank · security trimming.</p>
+          </div>
+          <div class="card fill-magenta reveal" style="--i:4;flex:1;">
+            <div class="card-tag">The question</div>
+            <div class="card-h3" style="margin-top:10px">What truly wins?</div>
+            <p class="bd-sm" style="margin-top:12px">Which newer techniques <strong>significantly</strong> improve retrieval in production — and which roadmap items are validated, superseded, or missing?</p>
+          </div>
+        </div>
+        <div class="timeline reveal" style="--i:5;margin-top:24px">
+          <span>2 reports compared</span><span>21 sources · 105 claims</span><span>10 strategies benchmarked</span><span>5K doc scale</span><span>Group benefits / insurance</span>
+        </div>
+      </div>
+      <div class="footer"><span>final_retrieval_strategy.md · Internal Review</span><span>02 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 3 · TWO REPORTS, TWO KINDS OF EVIDENCE  (matrix)
+         ============================================================ -->
+    <section class="slide" data-label="Two reports diff">
+      <div class="top"><span>Retrieval Strategy · 01</span><span class="tr">Compare</span></div>
+      <div class="wrap">
+        <div class="head-block reveal" style="--i:0">
+          <div class="eyebrow">Two reports, two kinds of evidence</div>
+          <h2 class="h-page">Proposer papers vs. head-to-head tests.</h2>
+        </div>
+        <table class="matrix reveal" style="--i:1;margin-top:24px;">
+          <colgroup><col style="width:20%"><col style="width:40%"><col style="width:40%"></colgroup>
+          <thead><tr><th>Dimension</th><th>Report A · survey</th><th>Report B · benchmark</th></tr></thead>
+          <tbody>
+            <tr><td class="rl">Evidence</td><td class="cell">Proposer papers — authors reporting wins on open-web benchmarks</td><td class="cell">Head-to-head comparisons on enterprise-style corpora + Azure vendor benchmarks</td></tr>
+            <tr><td class="rl">Corpus fit</td><td class="cell">Generic enterprise-KB framing</td><td class="cell">Matched: fact-dense, table-heavy, FAQ/procedural, bilingual EN/FR</td></tr>
+            <tr><td class="rl">Platform fit</td><td class="cell">Platform-agnostic; several picks need infra outside Azure</td><td class="cell">Azure AI Search-native options evaluated explicitly</td></tr>
+            <tr><td class="rl">Recency</td><td class="cell">Core citations 2020–2024</td><td class="cell">2024–2026, incl. post-Nov-2024 Azure ranker</td></tr>
+            <tr><td class="rl">It owns</td><td class="cell">Production ops — fast/slow tiering, LLM data-handling, governance</td><td class="cell">Measurement — per-claim confidence, benchmark grounding</td></tr>
+          </tbody>
+        </table>
+        <div class="action reveal" style="--i:2;margin-top:22px;">
+          <span class="tag">Rule applied</span><span class="rule"></span>
+          <span class="ah">Where they conflict, evidence wins</span>
+          <span class="conf">A = survey · B = verdicts</span>
+        </div>
+      </div>
+      <div class="footer"><span>final_retrieval_strategy.md · Internal Review</span><span>03 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 4 · THE HEADLINE ANSWER  (three levers / tablets)
+         ============================================================ -->
+    <section class="slide" data-label="Headline verdict">
+      <div class="top"><span>Retrieval Strategy · 02</span><span class="tr">Verdict</span></div>
+      <div class="wrap">
+        <div class="head-block reveal" style="--i:0">
+          <div class="eyebrow">The headline answer</div>
+          <h2 class="h-page">Your stack is the validated architecture.</h2>
+        </div>
+        <p class="lead reveal" style="--i:1;margin-top:16px;">Across every rigorous comparison, two-stage <span class="em">hybrid + neural reranking</span> beats every exotic single-stage alternative. The biggest wins aren't architecture swaps — they're three levers.</p>
+        <div style="display:flex;gap:24px;margin-top:26px;flex:1;">
+          <div class="tablet fill-orange reveal" style="--i:2;flex:1;">
+            <div class="num num-mark" style="font-size:150px">01</div>
+            <div class="card-h3" style="margin-top:8px">What you index</div>
+            <p class="bd-sm" style="margin-top:10px">Contextual chunk enrichment — the clearest, cheapest, most-replicated lift not yet in the near-term plan.</p>
+          </div>
+          <div class="tablet fill-teal reveal" style="--i:3;flex:1;">
+            <div class="num num-mark" style="font-size:150px">02</div>
+            <div class="card-h3" style="margin-top:8px">How you rank</div>
+            <p class="bd-sm" style="margin-top:10px">Reranker quality + candidate depth — the single largest lever in the stack (Recall@5 0.695 → 0.816).</p>
+          </div>
+          <div class="tablet fill-blue reveal" style="--i:4;flex:1;">
+            <div class="num num-mark" style="font-size:150px">03</div>
+            <div class="card-h3" style="margin-top:8px">How you route</div>
+            <p class="bd-sm" style="margin-top:10px">Query-class routing — spend expensive techniques only on the complex tail (+16 pts), skip on simple lookups (~0).</p>
+          </div>
+        </div>
+        <div class="action reveal" style="--i:5;margin-top:22px;background:var(--magenta);color:var(--bone);">
+          <span class="tag">Caution</span><span class="rule" style="background:var(--bone)"></span>
+          <span class="ah">HyDE measurably hurts fact-dense retrieval — demote, don't pilot</span>
+        </div>
+      </div>
+      <div class="footer"><span>final_retrieval_strategy.md · Internal Review</span><span>04 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 5 · T2-RAGBench  (the closest published analog)
+         ============================================================ -->
+    <section class="slide" data-label="T2-RAGBench">
+      <div class="top"><span>Retrieval Strategy · 03 · verified</span><span class="tr">Evidence</span></div>
+      <div class="wrap">
+        <div class="head-block reveal" style="--i:0">
+          <div class="eyebrow">The closest published analog · all differences p &lt; 0.001</div>
+          <h2 class="h-page">T2-RAGBench — 10 strategies, 23,088 queries.</h2>
+        </div>
+        <div style="display:flex;gap:26px;margin-top:24px;flex:1;">
+          <table class="matrix reveal" style="--i:1;flex:1.3;align-self:flex-start;">
+            <colgroup><col style="width:58%"><col style="width:21%"><col style="width:21%"></colgroup>
+            <thead><tr><th>Method</th><th>Recall@5</th><th>MRR@3</th></tr></thead>
+            <tbody>
+              <tr><td class="rl">HyDE</td><td class="num-cell">0.544</td><td class="num-cell">0.318</td></tr>
+              <tr><td class="rl">Dense (embed-3-large)</td><td class="num-cell">0.587</td><td class="num-cell">0.351</td></tr>
+              <tr><td class="rl">Multi-Query + RRF</td><td class="num-cell">0.640</td><td class="num-cell">0.397</td></tr>
+              <tr><td class="rl">BM25</td><td class="num-cell">0.644</td><td class="num-cell">0.411</td></tr>
+              <tr><td class="rl">Corrective RAG</td><td class="num-cell">0.658</td><td class="num-cell">0.415</td></tr>
+              <tr><td class="rl">Hybrid (RRF)</td><td class="num-cell">0.695</td><td class="num-cell">0.433</td></tr>
+              <tr><td class="rl">Contextual Hybrid</td><td class="num-cell">0.717</td><td class="num-cell">0.454</td></tr>
+              <tr class="win"><td class="rl">Hybrid + Cohere Rerank</td><td class="num-cell">0.816</td><td class="num-cell">0.605</td></tr>
+            </tbody>
+          </table>
+          <div style="flex:1;display:flex;flex-direction:column;gap:18px;">
+            <div class="card fill-sienna reveal" style="--i:2;"><div class="card-h3" style="font-size:26px">BM25 &gt; dense</div><p class="bd-sm" style="margin-top:8px">Lexical signal carries fact-dense corpora — plan numbers, acronyms, codes. Your synonym maps aren't legacy work.</p></div>
+            <div class="card fill-teal reveal" style="--i:3;"><div class="card-h3" style="font-size:26px">Reranker = biggest lever</div><p class="bd-sm" style="margin-top:8px">+0.121 Recall@5 over hybrid alone. Feed it 50–100 candidates, not 10.</p></div>
+            <div class="card fill-mustard reveal" style="--i:4;"><div class="card-h3" style="font-size:26px">"Smart" single-stage loses</div><p class="bd-sm" style="margin-top:8px">CRAG, multi-query, HyDE all lose to dumb hybrid + a good reranker.</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span>Source · arXiv 2604.01733 (verified) · mirrored by Azure / MIRACL</span><span>05 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 6 · TIER 1 · HYBRID + SEMANTIC RERANKER  (adopt)
+         ============================================================ -->
+    <section class="slide" data-label="Tier 1 · hybrid + reranker">
+      <div class="top"><span>Retrieval Strategy · Tier 1</span><span class="tr">Adopt · confidence high</span></div>
+      <div class="wrap">
+        <div class="action reveal" style="--i:0;">
+          <span class="tag">Tier 1 · Adopt</span><span class="rule"></span>
+          <span class="ah">Hybrid + semantic reranker — validated</span>
+          <span class="conf">● multilingual</span>
+        </div>
+        <p class="lead reveal" style="--i:1;margin-top:20px;">Microsoft's own numbers echo the benchmark — and the reranker is multilingual, which matters for your EN/FR split.</p>
+        <div style="display:flex;gap:22px;margin-top:24px;">
+          <div class="tablet fill-teal reveal" style="--i:2;flex:1;"><div class="stat"><span class="n" style="font-size:128px">60.1</span><span class="lab">NDCG@3 hybrid + ranker (vs 48.4 hybrid)</span></div></div>
+          <div class="tablet fill-orange reveal" style="--i:3;flex:1;"><div class="stat"><span class="n" style="font-size:128px">72.0</span><span class="lab">NDCG@10 multilingual MIRACL (vs 58.8)</span></div></div>
+          <div class="tablet fill-magenta reveal" style="--i:4;flex:1;"><div class="stat"><span class="n" style="font-size:128px">+23</span><span class="lab">NDCG@3 · Insurance / French MIML</span></div></div>
+          <div class="tablet fill-blue reveal" style="--i:5;flex:1;"><div class="stat"><span class="n" style="font-size:128px">~2×</span><span class="lab">Nov-2024 ranker vs prior generation</span></div></div>
+        </div>
+        <div style="display:flex;gap:22px;margin-top:22px;flex:1;">
+          <div class="card fill-paper reveal" style="--i:6;flex:1;"><div class="card-tag">Action</div><p class="bd-sm" style="margin-top:8px">Keep hybrid + RRF + semantic ranker as the backbone. A/B the Azure ranker vs an external cross-encoder (Cohere Rerank 3.5) on the golden set.</p></div>
+          <div class="card fill-sienna reveal" style="--i:7;flex:1;"><div class="card-tag">Re-test if stale</div><p class="bd-sm" style="margin-top:8px">If you benchmarked Azure's ranker before late 2024, those results are obsolete — the current generation buys far more relevance.</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>Source · Azure hybrid + ranking · MIML · MIRACL</span><span>06 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 7 · TIER 1 · CONTEXTUAL CHUNKS  (cheapest verified lift)
+         ============================================================ -->
+    <section class="slide" data-label="Tier 1 · contextual chunks">
+      <div class="top"><span>Retrieval Strategy · Tier 1</span><span class="tr">Adopt · pull forward</span></div>
+      <div class="wrap">
+        <div class="action reveal" style="--i:0;">
+          <span class="tag">Tier 1 · Cheapest lift</span><span class="rule"></span>
+          <span class="ah">Contextual (situated) chunks — pull forward</span>
+          <span class="conf">● confidence high</span>
+        </div>
+        <p class="lead reveal" style="--i:1;margin-top:20px;">Prepend a short LLM-generated context to each chunk before embedding <span class="em">and</span> BM25 indexing. Verified twice — and nearly free for you.</p>
+        <div style="display:flex;gap:22px;margin-top:24px;">
+          <div class="card fill-orange reveal" style="--i:2;flex:1.1;">
+            <div class="card-tag">Anthropic · top-20 failure rate</div>
+            <div class="flowrow" style="margin-top:14px;">
+              <span class="num" style="font-size:84px;">5.7%</span><span class="ar">→</span>
+              <span class="num" style="font-size:84px;">2.9%</span><span class="ar">→</span>
+              <span class="num" style="font-size:84px;">1.9%</span>
+            </div>
+            <p class="bd-sm" style="margin-top:12px">standard → contextual embeddings + contextual BM25 → + reranker (67% total reduction).</p>
+          </div>
+          <div class="card fill-teal reveal" style="--i:3;flex:.9;">
+            <div class="card-tag">T2-RAGBench · Recall@5</div>
+            <div class="flowrow" style="margin-top:14px;">
+              <span class="num" style="font-size:100px;">0.695</span><span class="ar">→</span><span class="num" style="font-size:100px;">0.717</span>
+            </div>
+            <p class="bd-sm" style="margin-top:12px">Contextual Hybrid beats vanilla Hybrid. Paper's verdict: "consistent gains."</p>
+          </div>
+        </div>
+        <div class="card fill-sienna reveal" style="--i:4;margin-top:22px;flex:1;">
+          <div class="card-tag">Why it's almost free here</div>
+          <p class="bd" style="margin-top:10px">You already have <span class="k">llm_summary</span>, <span class="k">Title</span>, <span class="k">Business_Unit</span> &amp; <span class="k">llm_category</span> per article. A minimal version — prepend title + summary + category breadcrumb to every chunk — needs no new enrichment. Report A missed this; your own analysis filed it under "long-term." <strong>Move it to the first sprint after chunking.</strong></p>
+        </div>
+      </div>
+      <div class="footer"><span>Source · Anthropic Contextual Retrieval · T2-RAGBench</span><span>07 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 8 · TIER 2 · AGENTIC RETRIEVAL  (route, complex only)
+         ============================================================ -->
+    <section class="slide" data-label="Tier 2 · agentic retrieval">
+      <div class="top"><span>Retrieval Strategy · Tier 2</span><span class="tr">Route · complex only</span></div>
+      <div class="wrap">
+        <div class="action reveal" style="--i:0;">
+          <span class="tag">Tier 2 · Conditional</span><span class="rule"></span>
+          <span class="ah">Agentic retrieval — for the complex tail</span>
+          <span class="conf">● medium · preview</span>
+        </div>
+        <p class="lead reveal" style="--i:1;margin-top:20px;">Azure's agentic retrieval (LLM query planning → parallel subqueries → per-subquery hybrid + rank → merge), benchmarked against <span class="em">exactly your planned stack</span>.</p>
+        <div style="display:flex;gap:22px;margin-top:24px;">
+          <div class="tablet fill-teal reveal" style="--i:2;flex:1;"><div class="stat"><span class="n" style="font-size:136px">+16<span class="suf">pts</span></span><span class="lab">Answer relevance · complex multi-doc (up to +33)</span></div></div>
+          <div class="tablet fill-orange reveal" style="--i:3;flex:1;"><div class="stat"><span class="n" style="font-size:136px">+0.03</span><span class="lab">Simple / classical queries — i.e., nothing</span></div></div>
+          <div class="tablet fill-blue reveal" style="--i:4;flex:1;"><div class="stat"><span class="n" style="font-size:136px">+10.3</span><span class="lab">French complex (French classical: +0.84)</span></div></div>
+        </div>
+        <div class="card fill-paper reveal" style="--i:5;margin-top:22px;flex:1;">
+          <div class="card-tag">The lesson is routing, not adoption</div>
+          <p class="bd" style="margin-top:8px;margin-bottom:14px">Classify queries (length · entities · turn-count). Send ~80% down the fast path; send the complex tail to agentic. Feature is <strong>preview</strong> — wrap it behind a flag with a fallback.</p>
+          <div class="flowrow">
+            <span class="chip fill-ink">query</span><span class="ar">→</span>
+            <span class="chip fill-mustard">classify</span><span class="ar">→</span>
+            <span class="chip fill-teal">~80% fast: hybrid + rank</span><span class="ar">·</span>
+            <span class="chip fill-magenta">~20% complex: agentic</span>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span>Source · Azure agentic retrieval engine + docs</span><span>08 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 9 · TIER 2 · QUERY REWRITE & MULTI-QUERY  (keep, expect little)
+         ============================================================ -->
+    <section class="slide" data-label="Tier 2 · query rewrite">
+      <div class="top"><span>Retrieval Strategy · Tier 2</span><span class="tr">Keep · expect little</span></div>
+      <div class="wrap">
+        <div class="action reveal" style="--i:0;">
+          <span class="tag">Tier 2 · Fallback only</span><span class="rule"></span>
+          <span class="ah">Query rewrite &amp; multi-query</span>
+          <span class="conf">Report A overstated this</span>
+        </div>
+        <p class="lead reveal" style="--i:1;margin-top:20px;">Once hybrid + the new semantic ranker are in place, generative rewriting adds little — its wins concentrate on hard, misspelled, keyword-code queries.</p>
+        <div style="display:flex;gap:22px;margin-top:24px;">
+          <div class="tablet fill-orange reveal" style="--i:2;flex:1;"><div class="stat"><span class="n" style="font-size:116px">+0–1.7</span><span class="lab">NDCG@3 from rewriting once ranker present</span></div></div>
+          <div class="tablet fill-sienna reveal" style="--i:3;flex:1;"><div class="stat"><span class="n" style="font-size:116px">+4–6</span><span class="lab">On hard / misspelled / keyword-code queries</span></div></div>
+          <div class="tablet fill-mustard reveal" style="--i:4;flex:1;"><div class="stat"><span class="n" style="font-size:116px">0.640</span><span class="lab">Multi-query ≈ plain BM25 (0.644)</span></div></div>
+        </div>
+        <div class="card fill-paper reveal" style="--i:5;margin-top:22px;flex:1;">
+          <div class="card-tag">Verdict</div>
+          <p class="bd" style="margin-top:8px">A targeted fallback for failed / hard / misspelled queries — not a default pipeline stage. Note: Azure's native rewrite is <strong>preview, not production-recommended</strong>, and needs <span class="k">queryLanguage</span> per request (fr-FR / fr-CA supported) — so detect query language first.</p>
+        </div>
+      </div>
+      <div class="footer"><span>Source · Azure QR + semantic ranker · T2-RAGBench</span><span>09 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 10 · HYDE — THE CONTRARIAN FINDING  (dark, demote)
+         ============================================================ -->
+    <section class="slide dark" data-label="HyDE · demote">
+      <div class="top"><span>Retrieval Strategy · Caution</span><span class="tr">Demote</span></div>
+      <div class="wrap">
+        <div class="head-block reveal" style="--i:0">
+          <div class="eyebrow" style="color:var(--orange)">The contrarian finding</div>
+          <h2 class="h-page">HyDE can <span style="color:var(--magenta)">hurt</span> here.</h2>
+        </div>
+        <div style="display:flex;gap:28px;margin-top:22px;align-items:flex-end;">
+          <div class="flowrow reveal" style="--i:1;align-items:baseline;gap:22px;">
+            <span class="num" style="font-size:228px;color:var(--magenta)">0.544</span>
+            <span class="num" style="font-size:120px;color:var(--bone);opacity:.7">&lt;</span>
+            <span class="num" style="font-size:190px;color:var(--orange)">0.587</span>
+          </div>
+          <div class="reveal" style="--i:2;padding-bottom:26px;">
+            <div class="card-tag" style="color:var(--bone);opacity:.7">Recall@5 · T2-RAGBench</div>
+            <div class="card-h3" style="color:var(--bone);margin-top:6px;font-size:26px;">HyDE &lt; plain dense</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:22px;margin-top:auto;">
+          <div class="card fill-magenta reveal" style="--i:3;flex:1;"><div class="card-tag">Why it backfires</div><p class="bd-sm" style="margin-top:8px">Hypothetical documents hallucinate plausible-but-wrong specifics — plan numbers, amounts, dates — dragging retrieval toward the wrong neighborhood.</p></div>
+          <div class="card fill-sienna reveal" style="--i:4;flex:1;"><div class="card-tag">Where it works (not you)</div><p class="bd-sm" style="margin-top:8px">HyDE's published wins are on open-web, underspecified queries. Your corpus of plan numbers and procedure codes is exactly the failure case.</p></div>
+          <div class="card fill-teal reveal" style="--i:5;flex:1;"><div class="card-tag">If ever tested</div><p class="bd-sm" style="margin-top:8px">Gate to short / vague queries only, and measure against the golden set first.</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>Source · arXiv 2604.01733 (verified) · overturns Report A pick #2</span><span>10 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 11 · TIER 3 · GRAPHRAG & RAPTOR  (defer with trigger)
+         ============================================================ -->
+    <section class="slide" data-label="Tier 3 · GraphRAG & RAPTOR">
+      <div class="top"><span>Retrieval Strategy · Tier 3</span><span class="tr">Defer · with trigger</span></div>
+      <div class="wrap">
+        <div class="head-block reveal" style="--i:0">
+          <div class="eyebrow">Tier 3 · skip or defer · tempers Report A pick #5</div>
+          <h2 class="h-page">GraphRAG &amp; RAPTOR — no lift for FAQ-style.</h2>
+        </div>
+        <div style="display:flex;gap:22px;margin-top:24px;">
+          <div class="card fill-sienna reveal" style="--i:1;flex:1;"><div class="card-h3" style="font-size:26px">Loses single-hop</div><p class="bd-sm" style="margin-top:8px">Natural Questions F1: RAG 64.78 &gt; Community-GraphRAG 63.01 &gt; RAPTOR 60.04. RAG also wins detail Qs (55.28 vs 46.88).</p></div>
+          <div class="card fill-teal reveal" style="--i:2;flex:1;"><div class="card-h3" style="font-size:26px">Wins only multi-hop</div><p class="bd-sm" style="margin-top:8px">And only by ~2–3 points (MultiHop-RAG: 70.27 vs 67.02) — a thin payoff for a heavy system.</p></div>
+          <div class="card fill-magenta reveal" style="--i:3;flex:1;"><div class="card-h3" style="font-size:26px">40–57× index cost</div><p class="bd-sm" style="margin-top:8px">135s → 5,560–7,702s to build on the same corpus, and quality depends on the graph-construction model.</p></div>
+          <div class="card fill-blue reveal" style="--i:4;flex:1;"><div class="card-h3" style="font-size:26px">LazyGraphRAG</div><p class="bd-sm" style="margin-top:8px">Swept 96/96 in BenchmarkQED — but its edge is global / aggregative ("summarize everything about X"), which a support chatbot rarely sees.</p></div>
+        </div>
+        <div class="action reveal" style="--i:5;margin-top:22px;">
+          <span class="tag">Trigger to revisit</span><span class="rule"></span>
+          <span class="ah">Production logs show multi-hop or aggregate queries failing at volume</span>
+        </div>
+      </div>
+      <div class="footer"><span>Source · arXiv 2502.11371 · BenchmarkQED</span><span>11 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 12 · TIER 3 · LONG-CTX / COLBERT / SELF-RAG
+         ============================================================ -->
+    <section class="slide" data-label="Tier 3 · three more decided">
+      <div class="top"><span>Retrieval Strategy · Tier 3</span><span class="tr">Skip / borrow</span></div>
+      <div class="wrap">
+        <div class="head-block reveal" style="--i:0">
+          <div class="eyebrow">Tier 3 · three more, decided · ColBERT overturns Report A pick #4</div>
+          <h2 class="h-page">Long-context · ColBERT · Self-RAG.</h2>
+        </div>
+        <div style="display:flex;gap:22px;margin-top:26px;flex:1;">
+          <div class="card fill-magenta reveal" style="--i:1;flex:1;">
+            <div class="flowrow" style="justify-content:space-between"><div class="card-h3">Long-context</div><span class="pill no">No</span></div>
+            <p class="bd-sm" style="margin-top:12px">8k → 120k context didn't help; even 1M tokens lost to structured retrieval. Your corpus is far too large anyway. RAG isn't being displaced at 5k docs — that story is for &lt;100-doc corpora.</p>
+          </div>
+          <div class="card fill-sienna reveal" style="--i:2;flex:1;">
+            <div class="flowrow" style="justify-content:space-between"><div class="card-h3">ColBERT / SPLADE</div><span class="pill no">Skip</span></div>
+            <p class="bd-sm" style="margin-top:12px">No Azure-native support → a second index + duplicated ACL trimming. No head-to-head evidence it beats hybrid + rerank on this doc type. The reranker already gives token-level scoring at the top of the funnel.</p>
+          </div>
+          <div class="card fill-teal reveal" style="--i:3;flex:1;">
+            <div class="flowrow" style="justify-content:space-between"><div class="card-h3">Self-RAG</div><span class="pill yes">Borrow</span></div>
+            <p class="bd-sm" style="margin-top:12px">Full version needs a custom model with reflection tokens — impractical. Take the transferable 20%: an orchestration-level groundedness gate → retry or escalate. Both reports agree.</p>
+          </div>
+        </div>
+        <div class="action reveal" style="--i:4;margin-top:22px;">
+          <span class="tag">Triggered backlog</span><span class="rule"></span>
+          <span class="ah">Re-opened on named log evidence — not relitigated every cycle</span>
+        </div>
+      </div>
+      <div class="footer"><span>Source · BenchmarkQED · context-rot · T2-RAGBench</span><span>12 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 13 · RECONCILE · WHERE BOTH AGREE  (dark agenda + blobs)
+         ============================================================ -->
+    <section class="slide dark s-agenda" data-label="Reconcile · agreements">
+      <div class="top"><span>Retrieval Strategy · Reconcile</span><span class="tr">The settled core</span></div>
+      <div style="position:absolute;left:64px;top:122px;right:64px;">
+        <div class="head-block reveal" style="--i:0">
+          <div class="eyebrow" style="color:var(--orange)">Where both reports agree · 6 of 12 techniques</div>
+          <h2 class="h-sm">Build these first.</h2>
+        </div>
+      </div>
+      <div class="grid">
+        <!-- each item: an organic blob behind a number + label -->
+        <div class="item reveal" style="--i:1">
+          <svg class="blob" viewBox="0 0 400 220" preserveAspectRatio="none"><path d="M40,30 C150,0 320,10 370,60 C400,110 380,180 300,200 C200,225 60,215 25,160 C-5,110 10,55 40,30 Z" fill="#EE7A2E"/></svg>
+          <div class="inner"><div class="bn">Backbone</div><div class="bh">Hybrid BM25 + vector + RRF</div><div class="bd2">The base of every winning configuration.</div></div>
+        </div>
+        <div class="item reveal" style="--i:2">
+          <svg class="blob" viewBox="0 0 400 220" preserveAspectRatio="none"><path d="M55,25 C170,5 310,5 365,55 C405,100 385,175 295,200 C190,228 55,210 28,150 C5,100 5,50 55,25 Z" fill="#2D7E73"/></svg>
+          <div class="inner"><div class="bn" style="color:var(--bone)">Biggest lever</div><div class="bh" style="color:var(--bone)">Semantic reranking</div><div class="bd2" style="color:var(--bone)">Cross-encoder scoring at the top of the funnel.</div></div>
+        </div>
+        <div class="item reveal" style="--i:3">
+          <svg class="blob" viewBox="0 0 400 220" preserveAspectRatio="none"><path d="M45,35 C140,2 300,5 360,50 C405,95 395,170 305,200 C205,230 55,220 25,155 C0,105 12,60 45,35 Z" fill="#D8A93B"/></svg>
+          <div class="inner"><div class="bn">Best practice</div><div class="bh">Heading-aware + parent–child</div><div class="bd2">Uncontested; small-to-big context stitching.</div></div>
+        </div>
+        <div class="item reveal" style="--i:4">
+          <svg class="blob" viewBox="0 0 400 220" preserveAspectRatio="none"><path d="M50,28 C160,2 305,12 362,58 C402,102 382,178 295,202 C195,228 58,212 26,152 C2,102 10,52 50,28 Z" fill="#3F73B7"/></svg>
+          <div class="inner"><div class="bn" style="color:var(--bone)">Borrow</div><div class="bh" style="color:var(--bone)">Self-RAG principles</div><div class="bd2" style="color:var(--bone)">Groundedness gate, abstain / escalate — no retraining.</div></div>
+        </div>
+        <div class="item reveal" style="--i:5">
+          <svg class="blob" viewBox="0 0 400 220" preserveAspectRatio="none"><path d="M42,32 C155,3 312,8 366,56 C404,100 388,176 298,200 C198,228 54,216 24,158 C-2,106 8,58 42,32 Z" fill="#C73B7A"/></svg>
+          <div class="inner"><div class="bn" style="color:var(--bone)">Convergent</div><div class="bh" style="color:var(--bone)">Fast / slow tiering = routing</div><div class="bd2" style="color:var(--bone)">Both arrived here independently — the strongest shared insight.</div></div>
+        </div>
+        <div class="item reveal" style="--i:6">
+          <svg class="blob" viewBox="0 0 400 220" preserveAspectRatio="none"><path d="M48,30 C158,4 308,8 363,55 C403,100 386,176 296,201 C196,229 56,214 25,155 C1,104 11,56 48,30 Z" fill="#A06A3C"/></svg>
+          <div class="inner"><div class="bn">Measure</div><div class="bh">Golden-set eval + A/B</div><div class="bd2">Every cited gain was found via exactly this loop.</div></div>
+        </div>
+      </div>
+      <div class="footer"><span>6 of 12 techniques · consensus — build these first</span><span>13 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 14 · RECONCILE · WHERE THEY CONFLICT  (matrix + pills)
+         ============================================================ -->
+    <section class="slide" data-label="Reconcile · conflicts">
+      <div class="top"><span>Retrieval Strategy · Reconcile</span><span class="tr">Who wins — and why</span></div>
+      <div class="wrap">
+        <div class="head-block reveal" style="--i:0">
+          <div class="eyebrow">Where they conflict · evidence breaks the ties</div>
+          <h2 class="h-page">3 of A's 6 numbered picks overturned.</h2>
+        </div>
+        <table class="matrix reveal" style="--i:1;margin-top:22px;">
+          <colgroup><col style="width:22%"><col style="width:25%"><col style="width:33%"><col style="width:20%"></colgroup>
+          <thead><tr><th>Technique</th><th>Report A says</th><th>Report B says (evidence)</th><th>Final call</th></tr></thead>
+          <tbody>
+            <tr><td class="rl">Contextual chunks</td><td class="cell">Absent — its biggest gap</td><td class="cell">Verified 2× · cheapest lift</td><td><span class="pill yes">Adopt · sprint 1</span></td></tr>
+            <tr><td class="rl">HyDE</td><td class="cell">Pilot it (#2)</td><td class="cell">0.544 &lt; 0.587 — measured harm</td><td><span class="pill no">Backlog</span></td></tr>
+            <tr><td class="rl">RAG-Fusion / MQ</td><td class="cell">Adopt (#3)</td><td class="cell">≈0 lift once ranker present</td><td><span class="pill partial">Fallback</span></td></tr>
+            <tr><td class="rl">ColBERT</td><td class="cell">Pilot (#4)</td><td class="cell">No Azure path · no head-to-head win</td><td><span class="pill no">Skip</span></td></tr>
+            <tr><td class="rl">GraphRAG</td><td class="cell">Prototype (#5)</td><td class="cell">Loses single-hop · 40–57× cost</td><td><span class="pill partial">Defer · trigger</span></td></tr>
+            <tr><td class="rl">Agentic retrieval</td><td class="cell">Absent</td><td class="cell">+16 complex / +0.03 simple</td><td><span class="pill yes">Route · complex</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="footer"><span>final_retrieval_strategy.md · Internal Review</span><span>14 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 15 · OVERALL BEST PICK  (statement panel + cards)
+         ============================================================ -->
+    <section class="slide" data-label="Best pick">
+      <div class="top"><span>Retrieval Strategy · 15</span><span class="tr">Decision</span></div>
+      <div class="wrap">
+        <div class="panel fill-magenta reveal" style="--i:0;">
+          <span class="qmark" style="left:24px;top:-30px;color:var(--bone)">“</span>
+          <div class="eyebrow" style="color:var(--bone);opacity:.85;">Overall best pick</div>
+          <div class="statement" style="margin-top:10px;max-width:1500px;">Report B is the foundation. Report A is folded in.</div>
+          <p class="bd" style="margin-top:14px;max-width:1400px;color:var(--bone)">The deciding factor is the <em>kind</em> of evidence — head-to-head tests on this corpus type beat proposer-paper wins on open-web benchmarks. Neither report alone is the plan; the reconciliation is.</p>
+        </div>
+        <div style="display:flex;gap:22px;margin-top:22px;flex:1;">
+          <div class="card fill-teal reveal" style="--i:1;flex:1;"><div class="card-tag">Why B wins the base</div><p class="bd-sm" style="margin-top:8px">Three of A's six picks don't survive head-to-head testing (HyDE, RAG-Fusion, ColBERT), and A misses the two highest-value items entirely — contextual chunks and agentic retrieval — plus the reranker's outsized role.</p></div>
+          <div class="card fill-sienna reveal" style="--i:2;flex:1;"><div class="card-tag">What A keeps</div><p class="bd-sm" style="margin-top:8px">Three lasting contributions: fast / slow tiering (converges with routing), Self-RAG-as-orchestration (groundedness gate, no retraining), and LLM data-handling governance.</p></div>
+          <div class="card fill-mustard reveal" style="--i:3;flex:1;"><div class="card-tag">Net</div><p class="bd-sm" style="margin-top:8px">Keep the benchmark-grounded verdicts as the spine; graft on the survey's operational discipline.</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>Foundation: Report B · grafted: Report A ops</span><span>15 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 16 · ROADMAP AUDIT  (validated / superseded / missing)
+         ============================================================ -->
+    <section class="slide" data-label="Roadmap audit">
+      <div class="top"><span>Retrieval Strategy · 16</span><span class="tr">Audit</span></div>
+      <div class="wrap">
+        <div class="head-block reveal" style="--i:0">
+          <div class="eyebrow">Your existing roadmap, audited · 10 items scored</div>
+          <h2 class="h-page">Validated · superseded · missing.</h2>
+        </div>
+        <div style="display:flex;gap:22px;margin-top:24px;flex:1;">
+          <div class="card fill-teal reveal" style="--i:1;flex:1;">
+            <div class="card-h3">✓ Validated — keep</div>
+            <p class="bd-sm" style="margin-top:14px;line-height:1.7">Hybrid + RRF<br>Semantic reranker (undersold)<br>Synonym maps · analyzers<br>Heading-aware · parent–child<br>Golden-set evaluation</p>
+          </div>
+          <div class="card fill-mustard reveal" style="--i:2;flex:1;">
+            <div class="card-h3">↓ Superseded — demote</div>
+            <p class="bd-sm" style="margin-top:14px;line-height:1.7">HyDE → backlog (harm)<br>Multi-query → fallback<br>Query rewrite → hard queries only<br>GraphRAG → drop, with trigger<br>ColBERT → skip on Azure</p>
+          </div>
+          <div class="card fill-orange reveal" style="--i:3;flex:1;">
+            <div class="card-h3">+ Missing — add</div>
+            <p class="bd-sm" style="margin-top:14px;line-height:1.7">Query-class routing<br>llm_faqs as a retrieval channel<br>Cross-language (EN↔FR) policy<br>Reranker depth + model ablation<br>Contextual chunks (pull forward)</p>
+          </div>
+        </div>
+        <div class="action reveal" style="--i:4;margin-top:22px;">
+          <span class="tag">Agentic orchestrator</span><span class="rule"></span>
+          <span class="ah">Keep — but scope it to the complex-query tier, not the whole pipeline</span>
+          <span class="conf">most of the plan holds</span>
+        </div>
+      </div>
+      <div class="footer"><span>final_retrieval_strategy.md · Internal Review</span><span>16 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 17 · WHAT'S MISSING  (four additions, process nodes)
+         ============================================================ -->
+    <section class="slide" data-label="Gaps to add">
+      <div class="top"><span>Retrieval Strategy · 17</span><span class="tr">Add</span></div>
+      <div class="wrap">
+        <div class="head-block reveal" style="--i:0">
+          <div class="eyebrow">What's missing from the roadmap · highest leverage first</div>
+          <h2 class="h-page">Four additions.</h2>
+        </div>
+        <div class="proc reveal" style="--i:1;margin-top:28px;flex:1;align-items:stretch;">
+          <div class="node fill-orange"><div class="ord">01</div><div class="nh">Query-class routing</div><p class="nb">The meta-finding: no technique wins everywhere. A cheap classifier in front of the retriever — with per-class A/B — is the highest-leverage architectural add.</p><span class="arr">→</span></div>
+          <div class="node fill-teal"><div class="ord" style="color:var(--bone)">02</div><div class="nh" style="color:var(--bone)">llm_faqs as a channel</div><p class="nb" style="color:var(--bone)">~4,600 article-level question sets already exist — free doc2query. Index each FAQ question as searchable + vector, mapped to its article. Measure it.</p><span class="arr" style="color:var(--bone)">→</span></div>
+          <div class="node fill-blue"><div class="ord" style="color:var(--bone)">03</div><div class="nh" style="color:var(--bone)">Cross-language policy</div><p class="nb" style="color:var(--bone)">Decide explicitly whether an EN query may retrieve a FR-only article. If yes → multilingual embeddings + reranker. BM25 won't cross languages.</p><span class="arr" style="color:var(--bone)">→</span></div>
+          <div class="node fill-sienna"><div class="ord">04</div><div class="nh">Reranker depth + ablation</div><p class="nb">Candidate depth (20 / 50 / 100) × model (Azure SR · Cohere 3.5 · LLM-rerank). High-impact, measurable knobs — first-class golden-set experiments.</p></div>
+        </div>
+      </div>
+      <div class="footer"><span>Gaps not in the original plan · routing is the big one</span><span>17 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 18 · THE CONSOLIDATED ARCHITECTURE  (flow)
+         ============================================================ -->
+    <section class="slide" data-label="Consolidated architecture">
+      <div class="top"><span>Retrieval Strategy · 18</span><span class="tr">Design</span></div>
+      <div class="wrap">
+        <div class="head-block reveal" style="--i:0">
+          <div class="eyebrow">The consolidated architecture</div>
+          <h2 class="h-page">Detect → route → retrieve → gate.</h2>
+        </div>
+        <div class="flowrow reveal" style="--i:1;margin-top:24px;">
+          <span class="chip fill-ink">user query</span><span class="ar">→</span>
+          <span class="chip fill-mustard">language detect · en / fr</span><span class="ar">→</span>
+          <span class="chip fill-magenta">query-class router</span>
+        </div>
+        <div style="display:flex;gap:22px;margin-top:22px;">
+          <div class="card fill-teal reveal" style="--i:2;flex:1;"><div class="card-tag" style="color:var(--bone);opacity:.8">Fast path · ~80%</div><p class="bd-sm" style="margin-top:8px;color:var(--bone)">Hybrid BM25 + vector (RRF) over <strong>contextual chunks</strong> + <strong>llm_faqs</strong> channel → semantic ranker (depth 50–100).</p></div>
+          <div class="card fill-blue reveal" style="--i:3;flex:1;"><div class="card-tag" style="color:var(--bone);opacity:.8">Slow path · ~20%</div><p class="bd-sm" style="margin-top:8px;color:var(--bone)">Azure agentic retrieval — LLM query planning → parallel subqueries → per-subquery hybrid + rank. Behind a preview flag; falls back to fast path.</p></div>
+        </div>
+        <div class="flowrow reveal" style="--i:4;margin-top:22px;">
+          <span class="chip fill-sienna">merge</span><span class="ar">→</span>
+          <span class="chip fill-paper" style="color:var(--ink)">ACL trim · latest-version · freshness / persona</span><span class="ar">→</span>
+          <span class="chip fill-orange">groundedness gate</span>
+        </div>
+        <div class="card fill-paper reveal" style="--i:5;margin-top:22px;flex:1;">
+          <div class="card-tag">Groundedness gate</div>
+          <p class="bd" style="margin-top:8px">Answer must cite a retrieved <span class="k">Title + content_path</span> → weak support retries with query-rewrite fallback → else <strong>abstain &amp; escalate</strong>.</p>
+        </div>
+      </div>
+      <div class="footer"><span>● index   ● rank   ● route   ● gate</span><span>18 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 19 · THE SEQUENCE  (phased plan, process nodes)
+         ============================================================ -->
+    <section class="slide" data-label="Phased plan">
+      <div class="top"><span>Retrieval Strategy · 19</span><span class="tr">Execute</span></div>
+      <div class="wrap">
+        <div class="head-block reveal" style="--i:0">
+          <div class="eyebrow">The sequence · ship the verified lift first</div>
+          <h2 class="h-page">Golden set goes in first, not last.</h2>
+        </div>
+        <div class="proc reveal" style="--i:1;margin-top:26px;">
+          <div class="node fill-sienna"><div class="ord">P0</div><div class="nh">Ingest hygiene</div><p class="nb">HTML→Markdown · entity decode · de-dup · PII redaction before embedding · heading-aware chunking + parent–child IDs.</p><span class="arr">→</span></div>
+          <div class="node fill-orange"><div class="ord">P1</div><div class="nh">Verified core · spr 1–2</div><p class="nb">Contextual chunks · hybrid + current ranker · golden set live first (stratified) · tracing.</p><span class="arr">→</span></div>
+          <div class="node fill-teal"><div class="ord" style="color:var(--bone)">P2</div><div class="nh" style="color:var(--bone)">Rank &amp; channels · spr 3–4</div><p class="nb" style="color:var(--bone)">Reranker ablation · llm_faqs channel · synonym maps · freshness · latest-version · ACL trimming.</p><span class="arr" style="color:var(--bone)">→</span></div>
+          <div class="node fill-blue"><div class="ord" style="color:var(--bone)">P3</div><div class="nh" style="color:var(--bone)">Routing &amp; tail · Q2</div><p class="nb" style="color:var(--bone)">Query-class router · agentic (flagged) · query-rewrite fallback · groundedness gate · cross-language decision.</p></div>
+        </div>
+        <div class="card fill-paper reveal" style="--i:2;margin-top:22px;">
+          <div class="card-tag">Backlog — re-open only on a named trigger</div>
+          <div class="flowrow" style="margin-top:12px;gap:12px;">
+            <span class="pill note">GraphRAG · multi-hop logs</span>
+            <span class="pill note">HyDE · vague-query tier underperforms</span>
+            <span class="pill note">ColBERT · off-Azure migration</span>
+            <span class="pill note">Embedding fine-tuning · vocab misses</span>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span>Every gain was measured</span><span>19 / 20</span></div>
+    </section>
+
+    <!-- ============================================================
+         SLIDE 20 · IN ONE BREATH  (dark close + big stats)
+         ============================================================ -->
+    <section class="slide dark" data-label="Close · in one breath">
+      <div class="top"><span>Retrieval Strategy · 20</span><span class="tr">Close</span></div>
+      <div class="wrap">
+        <div class="head-block reveal" style="--i:0">
+          <div class="eyebrow" style="color:var(--orange)">In one breath</div>
+          <h2 class="h-page">Won in what you index, how you rank, how you route.</h2>
+        </div>
+        <p class="lead reveal" style="--i:1;margin-top:16px;color:var(--bone);max-width:1560px;">Contextually enriched, de-duplicated, PII-safe chunks; hybrid recall plus a strong reranker at the right depth; a cheap path for the 80% of simple lookups and LLM-planned retrieval for the complex 20%. Everything else waits in a triggered backlog — and the golden set goes in first, because every number here was only discoverable through that loop.</p>
+        <div style="display:flex;gap:22px;margin-top:auto;">
+          <div class="tablet fill-orange reveal" style="--i:2;flex:1;"><div class="stat"><span class="n" style="font-size:124px">0.816</span><span class="lab">Recall@5 · the architecture to keep</span></div></div>
+          <div class="tablet fill-teal reveal" style="--i:3;flex:1;"><div class="stat"><span class="n" style="font-size:124px">67%</span><span class="lab">Retrieval-failure cut · contextual + rerank</span></div></div>
+          <div class="tablet fill-magenta reveal" style="--i:4;flex:1;"><div class="stat"><span class="n" style="font-size:124px">80/20</span><span class="lab">Fast path vs routed complex tail</span></div></div>
+          <div class="tablet fill-mustard reveal" style="--i:5;flex:1;"><div class="stat"><span class="n" style="font-size:124px">1</span><span class="lab">Consolidated plan · two reports reconciled</span></div></div>
+        </div>
+      </div>
+      <div class="footer"><span>Sources · T2-RAGBench (arXiv 2604.01733) · Anthropic · Azure · arXiv 2502.11371 · BenchmarkQED</span><span>20 / 20</span></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- progress + page chrome (outside the stage) -->
+<div class="deck-progress" id="deckProgress"></div>
+<div class="pageind" id="pageInd">01 / 20</div>
+
+<!-- inline editing controls -->
+<div class="edit-hotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)">✏️</button>
+<div class="edit-bar" id="editBar"><button id="btnSave">Save</button><button id="btnExport">Export HTML</button></div>
+
+<script>
+/* ===========================================================
+   SLIDE PRESENTATION CONTROLLER
+   - Uniformly scales the fixed 1920×1080 stage to the viewport
+   - Keyboard / wheel / touch navigation
+   - Progress bar + page indicator
+   =========================================================== */
+class SlidePresentation{
+  constructor(){
+    this.stage=document.getElementById('deckStage');
+    this.progress=document.getElementById('deckProgress');
+    this.pageInd=document.getElementById('pageInd');
+    this.current=0;
+    this.restore();
+    this.slides=[...document.querySelectorAll('.slide')];
+    this.setupScale();
+    this.setupKeys();
+    this.setupWheel();
+    this.setupTouch();
+    this.show(0);
+  }
+  setupScale(){
+    const scale=()=>{
+      const f=Math.min(window.innerWidth/1920,window.innerHeight/1080);
+      const x=(window.innerWidth-1920*f)/2, y=(window.innerHeight-1080*f)/2;
+      this.stage.style.transform=`translate(${x}px, ${y}px) scale(${f})`;
+    };
+    scale();
+    window.addEventListener('resize',scale);
+  }
+  setupKeys(){
+    document.addEventListener('keydown',e=>{
+      if(e.target.getAttribute && e.target.getAttribute('contenteditable')==='true') return;
+      if(['ArrowRight','ArrowDown',' ','PageDown'].includes(e.key)){e.preventDefault();this.next();}
+      else if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();this.prev();}
+      else if(e.key==='Home'){e.preventDefault();this.show(0);}
+      else if(e.key==='End'){e.preventDefault();this.show(this.slides.length-1);}
+    });
+  }
+  setupWheel(){
+    let lock=false;
+    window.addEventListener('wheel',e=>{
+      if(lock)return; if(Math.abs(e.deltaY)<24)return;
+      lock=true; e.deltaY>0?this.next():this.prev();
+      setTimeout(()=>lock=false,520);
+    },{passive:true});
+  }
+  setupTouch(){
+    let x0=null,y0=null;
+    window.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY;},{passive:true});
+    window.addEventListener('touchend',e=>{
+      if(x0===null)return;
+      const dx=e.changedTouches[0].clientX-x0, dy=e.changedTouches[0].clientY-y0;
+      if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>50){dx<0?this.next():this.prev();}
+      x0=y0=null;
+    },{passive:true});
+  }
+  next(){this.show(this.current+1);}
+  prev(){this.show(this.current-1);}
+  show(i){
+    this.current=Math.max(0,Math.min(i,this.slides.length-1));
+    this.slides.forEach((s,idx)=>{
+      s.classList.toggle('active',idx===this.current);
+      s.classList.toggle('visible',idx===this.current);
+    });
+    const pct=((this.current+1)/this.slides.length)*100;
+    this.progress.style.width=pct+'%';
+    const n=String(this.current+1).padStart(2,'0');
+    this.pageInd.textContent=`${n} / ${this.slides.length}`;
+  }
+  /* persist any inline edits made in this browser */
+  restore(){
+    try{
+      const saved=localStorage.getItem('stencil-retrieval-deck');
+      if(saved)this.stage.innerHTML=saved;
+    }catch(e){}
+  }
+}
+const deck=new SlidePresentation();
+
+/* ===========================================================
+   INLINE EDITING — toggle via hover hotzone, E key, or button
+   =========================================================== */
+const editor={
+  isActive:false,
+  toggleEditMode(){
+    this.isActive=!this.isActive;
+    document.body.classList.toggle('editing',this.isActive);
+    document.getElementById('editToggle').classList.toggle('active',this.isActive);
+    document.getElementById('editBar').classList.toggle('show',this.isActive);
+    const editable='h1,h2,h3,p,span,div.bn,div.bh,div.bd2,td,th,.card-h3,.card-tag,.lab,.ah,.tag,.eyebrow,.statement,.num';
+    deck.stage.querySelectorAll(editable).forEach(el=>{
+      if(this.isActive){el.setAttribute('contenteditable','true');}
+      else{el.removeAttribute('contenteditable');}
+    });
+  }
+};
+document.getElementById('editToggle').addEventListener('click',()=>editor.toggleEditMode());
+const hotzone=document.querySelector('.edit-hotzone');
+const editToggle=document.getElementById('editToggle');
+let hideTimeout=null;
+hotzone.addEventListener('mouseenter',()=>{clearTimeout(hideTimeout);editToggle.classList.add('show');});
+hotzone.addEventListener('mouseleave',()=>{hideTimeout=setTimeout(()=>{if(!editor.isActive)editToggle.classList.remove('show');},400);});
+editToggle.addEventListener('mouseenter',()=>clearTimeout(hideTimeout));
+editToggle.addEventListener('mouseleave',()=>{hideTimeout=setTimeout(()=>{if(!editor.isActive)editToggle.classList.remove('show');},400);});
+hotzone.addEventListener('click',()=>editor.toggleEditMode());
+document.addEventListener('keydown',e=>{
+  if((e.key==='e'||e.key==='E')&&!(e.target.getAttribute&&e.target.getAttribute('contenteditable')==='true')) editor.toggleEditMode();
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();saveEdits();}
+});
+function saveEdits(){
+  try{localStorage.setItem('stencil-retrieval-deck',deck.stage.innerHTML);
+    const b=document.getElementById('btnSave');b.textContent='Saved ✓';setTimeout(()=>b.textContent='Save',1400);
+  }catch(e){}
+}
+document.getElementById('btnSave').addEventListener('click',saveEdits);
+document.getElementById('btnExport').addEventListener('click',()=>{
+  const html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+  const blob=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='retrieval-strategy-deck-stencil.html';a.click();
+});
+</script>
+</body>
+</html>

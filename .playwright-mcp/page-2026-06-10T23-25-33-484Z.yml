@@ -1,0 +1,43 @@
+- generic [active] [ref=e1]:
+  - button "✎"
+  - main [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e12]: ~/ retrieval / final_retrieval_strategy.md
+        - generic [ref=e13]: Internal Review · 2026·06·10
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - generic [ref=e16]: Production RAG · 2025–2026
+          - heading "Beyond the baseline." [level=1] [ref=e17]:
+            - text: Beyond the
+            - text: baseline.
+          - paragraph [ref=e18]: Two deep-research reports reconciled against the benchmark evidence — and the consolidated retrieval plan for the Salesforce Knowledge corpus on Azure AI Search.
+          - generic [ref=e19]:
+            - generic [ref=e20]: "in: query"
+            - generic [ref=e21]: →
+            - generic [ref=e22]: retrieve
+            - generic [ref=e23]: →
+            - generic [ref=e24]: rerank
+            - generic [ref=e25]: →
+            - generic [ref=e26]: route
+            - generic [ref=e27]: →
+            - generic [ref=e28]: "out: answer"
+        - generic [ref=e29]:
+          - generic [ref=e30]: // retrieval readout
+          - generic [ref=e31]:
+            - generic [ref=e32]: "0.816"
+            - generic [ref=e33]: Recall@5 · hybrid + reranker
+          - generic [ref=e34]:
+            - generic [ref=e35]: +16 pts
+            - generic [ref=e36]: Agentic retrieval · complex queries
+          - generic [ref=e37]:
+            - generic [ref=e38]: 3 / 6
+            - generic [ref=e39]: Survey picks overturned by evidence
+          - img [ref=e40]
+      - generic [ref=e43]:
+        - generic [ref=e44]: ● hybrid + rerank
+        - generic [ref=e45]: "|"
+        - generic [ref=e46]: contextual chunks
+        - generic [ref=e47]: "|"
+        - generic [ref=e48]: query-class routing
+        - generic [ref=e49]: EN / FR · ~4,867 article versions · 01 / 20

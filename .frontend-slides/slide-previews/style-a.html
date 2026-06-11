@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Style A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* === NEO-GRID BOLD — editorial neo-brutalism, neon-yellow on ecru === */
+  :root{
+    --paper:#F5F4EF; --bg:#ECECE8; --ink:#0A0A0A;
+    --lemon:#E6FF3D; --muted:#8A8A85; --stage-bg:#1A1A1A;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  .viewport{position:fixed;inset:0;overflow:hidden;background:var(--stage-bg);display:flex;align-items:center;justify-content:center}
+  .stage{width:1920px;height:1080px;position:relative;background:var(--bg);overflow:hidden;transform-origin:center center}
+
+  /* 12 × 8 grid inset 40px, 12px gaps */
+  .frame{position:absolute;inset:40px;display:grid;
+    grid-template-columns:repeat(12,1fr);grid-template-rows:repeat(8,1fr);gap:12px}
+  .panel{overflow:hidden;position:relative}
+  .p-kicker{grid-column:1/span 8;grid-row:1/span 1;background:var(--paper);
+    display:flex;align-items:center;gap:18px;padding:0 28px;border:2px solid var(--ink)}
+  .p-stamp{grid-column:12/span 1;grid-row:1/span 1;background:var(--ink);
+    display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:4px;padding:14px}
+  .p-stamp i{background:var(--lemon)}
+  .p-stamp i:nth-child(2),.p-stamp i:nth-child(3){background:var(--paper)}
+  .p-side{grid-column:9/span 3;grid-row:1/span 5;background:var(--ink);
+    display:flex;align-items:flex-end;justify-content:flex-start;padding:28px}
+  .p-side .vlabel{writing-mode:vertical-rl;transform:rotate(180deg);
+    font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--lemon)}
+  .p-title{grid-column:1/span 8;grid-row:2/span 4;background:var(--paper);
+    border:2px solid var(--ink);display:flex;flex-direction:column;justify-content:center;padding:0 48px}
+  .p-signal{grid-column:1/span 8;grid-row:6/span 2;background:var(--lemon);
+    display:flex;align-items:center;gap:40px;padding:0 48px;border:2px solid var(--ink)}
+  .p-meta{grid-column:9/span 4;grid-row:6/span 2;background:var(--paper);
+    border:2px solid var(--ink);display:flex;flex-direction:column;justify-content:center;gap:14px;padding:0 32px}
+
+  .kicker{font-family:'JetBrains Mono',monospace;font-size:20px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--ink)}
+  .kicker .dot{color:var(--muted)}
+  h1{font-family:'Space Grotesk',sans-serif;font-weight:700;text-transform:uppercase;
+    color:var(--ink);font-size:150px;line-height:.92;letter-spacing:-.03em}
+  .sub{font-family:'Space Grotesk',sans-serif;font-weight:500;font-size:30px;
+    color:var(--ink);margin-top:26px;max-width:760px;line-height:1.25}
+  .stat{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:88px;
+    color:var(--ink);line-height:1;letter-spacing:-.02em;white-space:nowrap}
+  .stat small{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:22px;
+    display:block;letter-spacing:.08em;margin-top:8px}
+  .signal-label{font-family:'JetBrains Mono',monospace;font-size:19px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--ink);line-height:1.5;font-weight:700}
+  .meta-row{font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--ink)}
+  .meta-row b{color:var(--ink)}
+  .meta-row.m{color:var(--muted)}
+
+  /* entrance */
+  .panel{opacity:0;transform:translateY(18px);animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards}
+  .p-kicker{animation-delay:.05s}.p-stamp{animation-delay:.12s}
+  .p-side{animation-delay:.18s}.p-title{animation-delay:.24s}
+  .p-signal{animation-delay:.40s}.p-meta{animation-delay:.34s}
+  @keyframes rise{to{opacity:1;transform:translateY(0)}}
+  @media(prefers-reduced-motion:reduce){.panel{animation:none;opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="viewport"><div class="stage">
+  <div class="frame">
+    <div class="panel p-kicker"><span class="kicker">RETRIEVAL STRATEGY <span class="dot">/</span> INTERNAL REVIEW <span class="dot">/</span> 2026·06·10</span></div>
+    <div class="panel p-stamp"><i></i><i></i><i></i><i></i></div>
+    <div class="panel p-side"><span class="vlabel">Salesforce Knowledge · Azure AI Search</span></div>
+    <div class="panel p-title">
+      <h1>Final<br>Retrieval<br>Strategy</h1>
+      <p class="sub">Comparison, verdict, and the consolidated plan for production RAG retrieval.</p>
+    </div>
+    <div class="panel p-signal">
+      <div class="stat">0.695 → 0.816<small>RECALL@5 · HYBRID → HYBRID + RERANKER</small></div>
+      <div class="signal-label">THE WIN IS IN<br>WHAT YOU INDEX,<br>RANK & ROUTE</div>
+    </div>
+    <div class="panel p-meta">
+      <div class="meta-row"><b>~4,867</b> ARTICLE VERSIONS</div>
+      <div class="meta-row m">EN / FR · BILINGUAL</div>
+      <div class="meta-row m">2 REPORTS · 1 PLAN</div>
+    </div>
+  </div>
+</div></div>
+<script>
+  function fit(){const s=Math.min(innerWidth/1920,innerHeight/1080);
+    document.querySelector('.stage').style.transform=`scale(${s})`;}
+  addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>

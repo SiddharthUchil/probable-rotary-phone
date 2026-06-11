@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Style B</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* === SIGNAL — navy + bone + antique gold, intelligence-briefing editorial === */
+  :root{
+    --navy:#1C2644; --navy-alt:#232F55; --cream:#F0ECE3; --gold:#C8A870;
+    --text-warm:#E2DCD0; --muted:#8A96A8; --hint:#4E5A6E; --stage-bg:#10141f;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  .viewport{position:fixed;inset:0;overflow:hidden;background:var(--stage-bg);display:flex;align-items:center;justify-content:center}
+  .stage{width:1920px;height:1080px;position:relative;background:var(--navy);overflow:hidden;transform-origin:center center}
+  /* faint 80px grid fingerprint */
+  .stage::before{content:"";position:absolute;inset:0;
+    background-image:linear-gradient(var(--hint) 1px,transparent 1px),linear-gradient(90deg,var(--hint) 1px,transparent 1px);
+    background-size:80px 80px;opacity:.10}
+
+  .pad{position:absolute;inset:96px 110px;display:flex;flex-direction:column}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;
+    border-bottom:1px solid var(--hint);padding-bottom:22px}
+  .kicker{font-family:'IBM Plex Mono',monospace;font-size:21px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--gold)}
+  .kicker .m{color:var(--muted)}
+  .stamp{font-family:'IBM Plex Mono',monospace;font-size:18px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted);text-align:right;line-height:1.7}
+
+  .mid{flex:1;display:flex;flex-direction:column;justify-content:center}
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:22px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:30px}
+  h1{font-family:'Source Serif 4',serif;font-weight:400;color:var(--cream);
+    font-size:128px;line-height:1.02;letter-spacing:-.01em}
+  h1 em{font-style:italic;color:var(--gold)}
+  .sub{font-family:'DM Sans',sans-serif;font-weight:400;color:var(--text-warm);
+    font-size:30px;line-height:1.4;margin-top:38px;max-width:1180px}
+  .sub b{color:var(--cream);font-weight:700}
+
+  .figs{display:flex;gap:90px;margin-top:54px}
+  .fig{display:flex;flex-direction:column;gap:8px}
+  .fig .n{font-family:'Source Serif 4',serif;font-weight:600;font-size:62px;color:var(--gold);line-height:1}
+  .fig .l{font-family:'IBM Plex Mono',monospace;font-size:17px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--muted)}
+
+  .bottom{display:flex;justify-content:space-between;align-items:center;
+    border-top:1px solid var(--hint);padding-top:22px}
+  .bottom span{font-family:'IBM Plex Mono',monospace;font-size:18px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted)}
+  .rule-gold{width:64px;height:3px;background:var(--gold)}
+
+  /* entrance */
+  .reveal{opacity:0;transform:translateY(20px);animation:rise .8s cubic-bezier(.2,.7,.2,1) forwards}
+  .top{animation-delay:.05s}.eyebrow{animation-delay:.15s}h1{animation-delay:.25s}
+  .sub{animation-delay:.4s}.figs{animation-delay:.52s}.bottom{animation-delay:.62s}
+  @keyframes rise{to{opacity:1;transform:translateY(0)}}
+  @media(prefers-reduced-motion:reduce){.reveal{animation:none;opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="viewport"><div class="stage">
+  <div class="pad">
+    <div class="top reveal">
+      <div class="kicker">RETRIEVAL STRATEGY <span class="m">·</span> INTERNAL REVIEW</div>
+      <div class="stamp">SALESFORCE KNOWLEDGE · AZURE AI SEARCH<br>~4,867 ARTICLE VERSIONS · EN / FR<br>2026·06·10</div>
+    </div>
+    <div class="mid">
+      <div class="eyebrow reveal">Comparison · Verdict · Consolidated Plan</div>
+      <h1 class="reveal">Final Retrieval Strategy:<br>beyond the <em>baseline</em>.</h1>
+      <p class="sub reveal">Two deep-research reports, weighed against the benchmark evidence — and <b>one consolidated plan</b> for production RAG retrieval at enterprise scale.</p>
+      <div class="figs reveal">
+        <div class="fig"><span class="n">0.816</span><span class="l">Recall@5 · hybrid + reranker</span></div>
+        <div class="fig"><span class="n">+16 pts</span><span class="l">Agentic retrieval · complex queries</span></div>
+        <div class="fig"><span class="n">3 of 6</span><span class="l">Survey picks overturned by evidence</span></div>
+      </div>
+    </div>
+    <div class="bottom reveal">
+      <span>Production Enterprise RAG · 2025–2026</span>
+      <div class="rule-gold"></div>
+      <span>Prepared for technical review</span>
+    </div>
+  </div>
+</div></div>
+<script>
+  function fit(){const s=Math.min(innerWidth/1920,innerHeight/1080);
+    document.querySelector('.stage').style.transform=`scale(${s})`;}
+  addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>

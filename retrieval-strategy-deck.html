@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Final Retrieval Strategy — Retrieval Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* ===========================================
+     THEME — "Retrieval Console" custom design system
+     Dark instrumentation / IDE telemetry aesthetic
+     teal = adopt/validated · amber = route/conditional
+     red = skip/harm · dim = defer/backlog
+     =========================================== */
+  :root{
+    --stage-bg:#05080b;
+    --bg:#0C1014; --panel:#141A21; --panel-2:#1A222B; --line:#26303B;
+    --teal:#2DD4BF; --amber:#FFB454; --red:#FF6B6B; --text:#E6EDF3;
+    --muted:#7D8694; --dim:#4A5560;
+    --font-display:'Bricolage Grotesque',sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+    --ease:cubic-bezier(.16,1,.3,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+
+  /* --- viewport-base.css (full, mandatory) --- */
+  html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--stage-bg)}
+  .deck-viewport{position:fixed;inset:0;overflow:hidden;background:var(--stage-bg)}
+  .deck-stage{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;transform-origin:0 0;background:var(--bg)}
+  .slide{position:absolute;inset:0;width:1920px;height:1080px;overflow:hidden;display:block;visibility:hidden;opacity:0;pointer-events:none;background:var(--bg)}
+  .slide.active,.slide.visible{visibility:visible;opacity:1;pointer-events:auto;z-index:1}
+  img,video,canvas,svg{max-width:100%;max-height:100%}
+  .deck-controls{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:1000}
+  @media print{
+    html,body{width:1920px;height:auto;overflow:visible;background:#000}
+    .deck-viewport{position:static;overflow:visible}
+    .deck-stage{position:static;width:auto;height:auto;transform:none!important}
+    .slide{position:relative;display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;width:1920px;height:1080px;break-after:page;page-break-after:always}
+    .slide:last-child{break-after:auto;page-break-after:auto}
+    .deck-controls{display:none!important}
+  }
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.2s!important}}
+
+  /* ===========================================
+     SLIDE SHELL — shared atmosphere + chrome
+     =========================================== */
+  .slide{font-family:var(--font-mono);color:var(--text)}
+  /* dot-grid texture + corner glow */
+  .slide::before{content:"";position:absolute;inset:0;
+    background-image:radial-gradient(var(--line) 1.3px,transparent 1.3px);background-size:34px 34px;opacity:.40;z-index:0}
+  .slide::after{content:"";position:absolute;width:1000px;height:1000px;border-radius:50%;
+    background:radial-gradient(circle,rgba(45,212,191,.13),transparent 62%);filter:blur(18px);z-index:0;
+    left:-240px;top:-340px}
+  .slide.glow-r::after{left:auto;right:-300px;top:auto;bottom:-360px;background:radial-gradient(circle,rgba(255,180,84,.10),transparent 62%)}
+  .slide.glow-c::after{left:50%;top:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(45,212,191,.10),transparent 60%)}
+
+  /* top + bottom console chrome */
+  .ctop{position:absolute;top:0;left:0;right:0;height:62px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:24px;padding:0 64px;background:rgba(12,16,20,.72);z-index:5}
+  .dots{display:flex;gap:9px}.dots i{width:12px;height:12px;border-radius:50%;background:var(--dim)}
+  .dots i:first-child{background:var(--amber)}.dots i:nth-child(2){background:var(--teal)}
+  .ctop .path{font-size:17px;color:var(--muted);letter-spacing:.03em}
+  .ctop .path b{color:var(--text);font-weight:500}
+  .ctop .r{margin-left:auto;font-size:15px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+  .cbot{position:absolute;bottom:0;left:0;right:0;height:54px;border-top:1px solid var(--line);
+    display:flex;align-items:center;gap:26px;padding:0 64px;background:rgba(12,16,20,.72);z-index:5;
+    font-size:15px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+  .cbot .sep{color:var(--line)}.cbot .ok{color:var(--teal)}
+  .cbot .r{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
+
+  /* content region */
+  .wrap{position:absolute;inset:62px 0 54px 0;padding:54px 64px;z-index:2;display:flex;flex-direction:column}
+  .kicker{display:inline-flex;align-items:center;gap:12px;font-size:18px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--teal);margin-bottom:22px}
+  .kicker::before{content:"";width:34px;height:2px;background:var(--teal)}
+  .kicker.am{color:var(--amber)}.kicker.am::before{background:var(--amber)}
+  .kicker.rd{color:var(--red)}.kicker.rd::before{background:var(--red)}
+  h2{font-family:var(--font-display);font-weight:700;font-size:62px;line-height:1.0;letter-spacing:-.025em;color:var(--text)}
+  h2 .ac{color:var(--teal)} h2 .am{color:var(--amber)} h2 .rd{color:var(--red)}
+  .lead{font-size:23px;line-height:1.5;color:var(--muted);max-width:1500px;margin-top:18px}
+  .lead b{color:var(--text);font-weight:500} .lead .t{color:var(--teal)} .lead .a{color:var(--amber)} .lead .x{color:var(--red)}
+
+  /* cards */
+  .grid{display:grid;gap:22px;margin-top:30px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:26px 28px;position:relative;overflow:hidden}
+  .card.lt{border-left:3px solid var(--teal)} .card.la{border-left:3px solid var(--amber)}
+  .card.lx{border-left:3px solid var(--red)} .card.ld{border-left:3px solid var(--dim)}
+  .card h3{font-family:var(--font-display);font-weight:600;font-size:25px;color:var(--text);margin-bottom:10px;letter-spacing:-.01em}
+  .card p{font-size:18px;line-height:1.5;color:var(--muted)} .card p b{color:var(--text);font-weight:500}
+  .card .big{font-family:var(--font-display);font-weight:700;font-size:46px;line-height:1;color:var(--teal)}
+  .card .big.am{color:var(--amber)} .card .big.rd{color:var(--red)} .card .big.tx{color:var(--text)}
+
+  /* verdict chips */
+  .chip{display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:700;letter-spacing:.08em;
+    text-transform:uppercase;padding:6px 12px;border-radius:7px;border:1px solid;white-space:nowrap}
+  .chip::before{content:"";width:8px;height:8px;border-radius:50%}
+  .c-adopt{color:var(--teal);border-color:rgba(45,212,191,.4);background:rgba(45,212,191,.08)}.c-adopt::before{background:var(--teal)}
+  .c-route{color:var(--amber);border-color:rgba(255,180,84,.4);background:rgba(255,180,84,.08)}.c-route::before{background:var(--amber)}
+  .c-skip{color:var(--red);border-color:rgba(255,107,107,.4);background:rgba(255,107,107,.08)}.c-skip::before{background:var(--red)}
+  .c-defer{color:var(--muted);border-color:var(--line);background:rgba(125,134,148,.06)}.c-defer::before{background:var(--muted)}
+
+  /* console table */
+  .tbl{width:100%;border-collapse:collapse;margin-top:24px}
+  .tbl th{font-family:var(--font-mono);font-size:16px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--dim);text-align:left;padding:13px 16px;border-bottom:1px solid var(--line)}
+  .tbl th.n,.tbl td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .tbl td{font-size:19px;color:var(--text);padding:13px 16px;border-bottom:1px solid var(--line);line-height:1.35}
+  .tbl td.meth{color:var(--muted)} .tbl td.num{font-family:var(--font-display);font-weight:700}
+  .tbl tr.best td{color:var(--teal)} .tbl tr.best td.meth{color:var(--teal)}
+  .tbl tr.harm td.num{color:var(--red)}
+  .tbl tr.dim td{color:var(--muted)}
+
+  /* metric strip */
+  .metrics{display:flex;gap:0;margin-top:28px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .metrics .m{flex:1;padding:26px 30px;border-right:1px solid var(--line);background:var(--panel)}
+  .metrics .m:last-child{border-right:none}
+  .metrics .v{font-family:var(--font-display);font-weight:700;font-size:50px;line-height:1;color:var(--teal)}
+  .metrics .v.am{color:var(--amber)}.metrics .v.rd{color:var(--red)}.metrics .v.tx{color:var(--text)}
+  .metrics .l{font-size:16px;color:var(--muted);letter-spacing:.03em;margin-top:12px;line-height:1.4}
+
+  /* pipeline nodes */
+  .pipe{display:flex;align-items:center;flex-wrap:wrap;gap:0}
+  .node{font-size:18px;letter-spacing:.03em;padding:13px 20px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--text)}
+  .node .k{color:var(--muted)}
+  .node.on{border-color:var(--teal);color:var(--teal);box-shadow:0 0 0 1px rgba(45,212,191,.3),0 0 22px rgba(45,212,191,.16)}
+  .node.am{border-color:var(--amber);color:var(--amber);box-shadow:0 0 0 1px rgba(255,180,84,.3),0 0 22px rgba(255,180,84,.16)}
+  .arrow{color:var(--dim);padding:0 12px;font-size:18px}
+
+  /* two-column flow */
+  .cols{display:grid;gap:24px}
+
+  /* ===========================================
+     TITLE SLIDE
+     =========================================== */
+  .title-wrap{position:absolute;inset:62px 0 54px 0;display:grid;grid-template-columns:1.55fr 1fr;z-index:2}
+  .title-left{padding:90px 64px;display:flex;flex-direction:column;justify-content:center}
+  .title-left .tag{display:inline-flex;align-items:center;gap:12px;font-size:19px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);margin-bottom:32px}
+  .title-left .tag::before{content:"";width:40px;height:2px;background:var(--teal)}
+  .title-left h1{font-family:var(--font-display);font-weight:800;font-size:120px;line-height:.95;letter-spacing:-.03em;color:var(--text)}
+  .title-left h1 .accent{color:var(--teal)}
+  .title-left .sub{font-size:25px;color:var(--muted);line-height:1.5;margin-top:34px;max-width:860px}
+  .title-left .sub b{color:var(--text);font-weight:500}
+  .title-pipe{display:flex;align-items:center;flex-wrap:wrap;margin-top:48px}
+  .title-right{border-left:1px solid var(--line);background:linear-gradient(180deg,var(--panel),rgba(20,26,33,.35));
+    padding:80px 54px;display:flex;flex-direction:column;justify-content:center}
+  .title-right .rh{font-size:16px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin-bottom:26px}
+  .title-right .met{padding:22px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+  .title-right .met:last-of-type{border-bottom:1px solid var(--line)}
+  .title-right .met .v{font-family:var(--font-display);font-weight:700;font-size:50px;line-height:1;color:var(--text)}
+  .title-right .met .v.teal{color:var(--teal)}.title-right .met .v.am{color:var(--amber)}
+  .title-right .met .l{font-size:16px;color:var(--muted)}
+  .spark{margin-top:26px;height:56px;width:100%}
+  .spark path{fill:none;stroke:var(--teal);stroke-width:2.5;stroke-dasharray:600;stroke-dashoffset:600}
+  .slide.visible .spark path{animation:draw 1.6s ease .6s forwards}
+  .spark .area{fill:url(#sg);stroke:none;opacity:0}
+  .slide.visible .spark .area{animation:fade .8s ease 1.5s forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}@keyframes fade{to{opacity:.5}}
+
+  /* ===========================================
+     ENTRANCE ANIMATIONS (replay per active slide)
+     =========================================== */
+  .reveal{opacity:0;transform:translateY(26px);transition:opacity .6s var(--ease),transform .6s var(--ease)}
+  .slide.visible .reveal{opacity:1;transform:translateY(0)}
+  .slide.visible .reveal:nth-child(1){transition-delay:.06s}
+  .slide.visible .reveal:nth-child(2){transition-delay:.14s}
+  .slide.visible .reveal:nth-child(3){transition-delay:.22s}
+  .slide.visible .reveal:nth-child(4){transition-delay:.30s}
+  .slide.visible .reveal:nth-child(5){transition-delay:.38s}
+  .slide.visible .reveal:nth-child(6){transition-delay:.46s}
+  .slide.visible .r2{opacity:0;transform:translateY(26px);transition:opacity .6s var(--ease) .3s,transform .6s var(--ease) .3s}
+  .slide.visible.visible .r2{opacity:1;transform:translateY(0)}
+  /* stagger helper for grids/rows */
+  .stagger>*{opacity:0;transform:translateY(20px);transition:opacity .55s var(--ease),transform .55s var(--ease)}
+  .slide.visible .stagger>*{opacity:1;transform:translateY(0)}
+  .slide.visible .stagger>*:nth-child(1){transition-delay:.20s}
+  .slide.visible .stagger>*:nth-child(2){transition-delay:.30s}
+  .slide.visible .stagger>*:nth-child(3){transition-delay:.40s}
+  .slide.visible .stagger>*:nth-child(4){transition-delay:.50s}
+  .slide.visible .stagger>*:nth-child(5){transition-delay:.60s}
+  .slide.visible .stagger>*:nth-child(6){transition-delay:.70s}
+
+  /* edit mode + nav chrome */
+  .edit-hotzone{position:fixed;top:0;left:0;width:80px;height:80px;z-index:10000;cursor:pointer}
+  .edit-toggle{position:fixed;top:18px;left:18px;width:46px;height:46px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel);color:var(--text);font-size:20px;cursor:pointer;opacity:0;pointer-events:none;
+    transition:opacity .3s ease;z-index:10001}
+  .edit-toggle.show,.edit-toggle.active{opacity:1;pointer-events:auto}
+  .edit-toggle.active{border-color:var(--teal);color:var(--teal)}
+  .progress{position:fixed;left:0;top:0;height:3px;background:var(--teal);z-index:1000;transition:width .4s var(--ease);box-shadow:0 0 10px rgba(45,212,191,.5)}
+  [contenteditable="true"]{outline:1px dashed var(--teal);outline-offset:4px;border-radius:3px}
+</style>
+</head>
+<body>
+<div class="edit-hotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)">✎</button>
+<div class="progress" id="progress"></div>
+
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+  <!-- ============ 01 · TITLE ============ -->
+  <section class="slide title-slide active">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / <b>final_retrieval_strategy.md</b></div>
+      <div class="r">Internal Review · 2026·06·10</div></div>
+    <div class="title-wrap">
+      <div class="title-left">
+        <span class="tag reveal">Production RAG · 2025–2026</span>
+        <h1 class="reveal">Beyond the<br><span class="accent">baseline.</span></h1>
+        <p class="sub reveal">Two deep-research reports reconciled against the benchmark evidence — and the <b>consolidated retrieval plan</b> for the Salesforce Knowledge corpus on Azure AI Search.</p>
+        <div class="title-pipe reveal">
+          <span class="node"><span class="k">in:</span> query</span><span class="arrow">→</span>
+          <span class="node on">retrieve</span><span class="arrow">→</span>
+          <span class="node on">rerank</span><span class="arrow">→</span>
+          <span class="node on">route</span><span class="arrow">→</span>
+          <span class="node"><span class="k">out:</span> answer</span>
+        </div>
+      </div>
+      <div class="title-right reveal">
+        <div class="rh">// retrieval readout</div>
+        <div class="met"><span class="v teal">0.816</span><span class="l">Recall@5 · hybrid + reranker</span></div>
+        <div class="met"><span class="v">+16 pts</span><span class="l">Agentic retrieval · complex queries</span></div>
+        <div class="met"><span class="v am">3 / 6</span><span class="l">Survey picks overturned by evidence</span></div>
+        <svg class="spark" viewBox="0 0 360 56" preserveAspectRatio="none">
+          <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#2DD4BF"/><stop offset="1" stop-color="#2DD4BF" stop-opacity="0"/></linearGradient></defs>
+          <path class="area" d="M0,44 L36,38 L74,42 L112,28 L150,31 L188,18 L228,22 L268,11 L308,14 L360,5 L360,56 L0,56 Z"/>
+          <path d="M0,44 L36,38 L74,42 L112,28 L150,31 L188,18 L228,22 L268,11 L308,14 L360,5"/>
+        </svg>
+      </div>
+    </div>
+    <div class="cbot"><span><span class="ok">●</span> hybrid + rerank</span><span class="sep">|</span>
+      <span>contextual chunks</span><span class="sep">|</span><span>query-class routing</span>
+      <span class="r">EN / FR · ~4,867 article versions · 01 / 20</span></div>
+  </section>
+
+  <!-- ============ 02 · THE BRIEF ============ -->
+  <section class="slide glow-r">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / <b>00_the_brief</b></div><div class="r">Context</div></div>
+    <div class="wrap">
+      <span class="kicker reveal">The brief</span>
+      <h2 class="reveal">A strong baseline — and one question.</h2>
+      <p class="lead reveal">A bilingual enterprise knowledge chatbot over a Salesforce Knowledge dump, indexed in Azure AI Search. The planned stack is already 2024-grade best practice. The question: <b>what demonstrably beats it in production?</b></p>
+      <div class="grid stagger" style="grid-template-columns:repeat(3,1fr);margin-top:34px">
+        <div class="card lt"><h3>The corpus</h3><p><b>~4,867</b> article versions · EN (3,013) / FR (1,854) · HTML→Markdown bodies · rich metadata: business unit, persona, product family, category, LLM-extracted entities, FAQs &amp; summaries.</p></div>
+        <div class="card lt"><h3>The baseline</h3><p>Heading-aware chunking · hybrid <b>BM25 + vector</b> with RRF · Azure semantic reranker · scoring profiles · synonym maps · parent–child · query rewrite + HyDE + multi-query · LLM rerank · security trimming.</p></div>
+        <div class="card la"><h3>The question</h3><p>Which newer techniques <b>significantly</b> improve retrieval in production — and which roadmap items are validated, superseded, or missing?</p></div>
+      </div>
+      <div class="metrics reveal" style="margin-top:26px">
+        <div class="m"><div class="v tx">2</div><div class="l">Deep-research reports compared</div></div>
+        <div class="m"><div class="v tx">21</div><div class="l">Sources · 105 candidate claims</div></div>
+        <div class="m"><div class="v tx">10</div><div class="l">Retrieval strategies benchmarked head-to-head</div></div>
+        <div class="m"><div class="v tx">5k</div><div class="l">Document scale — small enough to change the calculus</div></div>
+      </div>
+    </div>
+    <div class="cbot"><span>Salesforce Knowledge · Azure AI Search</span><span class="sep">|</span><span>Group benefits / insurance</span>
+      <span class="r">02 / 20</span></div>
+  </section>
+
+  <!-- ============ 03 · TWO KINDS OF EVIDENCE ============ -->
+  <section class="slide">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / <b>01_two_reports_diff</b></div><div class="r">Compare</div></div>
+    <div class="wrap">
+      <span class="kicker reveal">Two reports, two kinds of evidence</span>
+      <h2 class="reveal">Proposer papers vs. <span class="ac">head-to-head</span> tests.</h2>
+      <p class="lead reveal">The structural difference decides the tie-breaks: a technique's own paper almost always shows a win. Only comparative evaluation on a similar corpus can rank techniques.</p>
+      <table class="tbl reveal">
+        <thead><tr><th style="width:18%">Dimension</th><th>Report A · Perplexity survey</th><th>Report B · deep-research</th></tr></thead>
+        <tbody>
+          <tr><td class="meth">Evidence type</td><td>Proposer papers — each technique's authors reporting wins on open-web benchmarks</td><td><b style="color:var(--teal)">Head-to-head</b> comparisons on enterprise-style corpora + Azure vendor benchmarks</td></tr>
+          <tr><td class="meth">Corpus fit</td><td>Generic enterprise-KB framing</td><td>Matched: fact-dense, table-heavy, FAQ/procedural, bilingual EN/FR</td></tr>
+          <tr><td class="meth">Platform fit</td><td>Platform-agnostic; several picks need infra outside Azure</td><td>Azure AI Search-native options evaluated explicitly</td></tr>
+          <tr><td class="meth">Recency</td><td>Core citations 2020–2024</td><td>2024–2026, incl. post-Nov-2024 Azure ranker</td></tr>
+          <tr><td class="meth">Strength it owns</td><td><b style="color:var(--amber)">Production ops</b> — fast/slow tiering, LLM data-handling, governance</td><td><b style="color:var(--teal)">Measurement</b> — per-claim confidence, benchmark grounding</td></tr>
+        </tbody>
+      </table>
+      <p class="lead r2" style="margin-top:22px">Rule applied throughout: <b>where they conflict, evidence wins; where Report A adds operational substance the benchmarks don't speak to, keep it.</b></p>
+    </div>
+    <div class="cbot"><span>A = technique survey</span><span class="sep">|</span><span>B = benchmark-ranked verdicts</span>
+      <span class="r">03 / 20</span></div>
+  </section>
+
+  <!-- ============ 04 · THE VERDICT ============ -->
+  <section class="slide glow-c">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / <b>02_headline_verdict</b></div><div class="r">Verdict</div></div>
+    <div class="wrap">
+      <span class="kicker reveal">The headline answer</span>
+      <h2 class="reveal">Your stack is the <span class="ac">validated</span> architecture — not a baseline to replace.</h2>
+      <p class="lead reveal">Across every rigorous comparison, two-stage <b>hybrid + neural reranking</b> beats every exotic single-stage alternative. The biggest wins aren't architecture swaps — they're three levers.</p>
+      <div class="grid stagger" style="grid-template-columns:repeat(3,1fr);margin-top:36px">
+        <div class="card lt"><div class="big">01</div><h3 style="margin-top:14px">What you index</h3><p>Contextual (situated) chunk enrichment — the clearest, cheapest, most-replicated lift not yet in the near-term plan.</p></div>
+        <div class="card lt"><div class="big">02</div><h3 style="margin-top:14px">How you rank</h3><p>Reranker quality + candidate depth — the single largest lever in the whole stack (Recall@5 0.695 → 0.816).</p></div>
+        <div class="card la"><div class="big am">03</div><h3 style="margin-top:14px">How you route</h3><p>Query-class routing — spend expensive techniques only on complex queries (+16 pts), skip them on simple lookups (~0).</p></div>
+      </div>
+      <div class="card lx reveal" style="margin-top:24px;display:flex;align-items:center;gap:24px">
+        <span class="chip c-skip">caution</span>
+        <p style="font-size:20px;color:var(--text)"><b>HyDE measurably <span style="color:var(--red)">hurts</span> retrieval on fact-dense corpora</b> like insurance/benefits content — it should be demoted from the roadmap, not piloted.</p>
+      </div>
+    </div>
+    <div class="cbot"><span><span class="ok">●</span> index</span><span class="sep">|</span><span><span class="ok">●</span> rank</span><span class="sep">|</span><span style="color:var(--amber)">● route</span>
+      <span class="r">04 / 20</span></div>
+  </section>
+
+  <!-- ============ 05 · THE BENCHMARK ============ -->
+  <section class="slide">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / <b>03_benchmark_T2RAGBench</b></div><div class="r">Evidence · verified</div></div>
+    <div class="wrap">
+      <span class="kicker reveal">The closest published analog</span>
+      <h2 class="reveal">T2-RAGBench — 10 strategies, 23,088 queries.</h2>
+      <p class="lead reveal">Mixed text-and-table financial docs: fact-dense, numeric, enterprise-style — like benefits plans. All differences significant at <b>p &lt; 0.001</b>.</p>
+      <div class="cols" style="grid-template-columns:1.35fr .85fr;margin-top:18px">
+        <table class="tbl reveal" style="margin-top:6px">
+          <thead><tr><th>Method</th><th class="n">Recall@5</th><th class="n">MRR@3</th></tr></thead>
+          <tbody>
+            <tr class="harm"><td class="meth">HyDE</td><td class="num n">0.544</td><td class="n">0.318</td></tr>
+            <tr class="dim"><td class="meth">Dense (text-embed-3-large)</td><td class="num n">0.587</td><td class="n">0.351</td></tr>
+            <tr class="dim"><td class="meth">Multi-Query + RRF</td><td class="num n">0.640</td><td class="n">0.397</td></tr>
+            <tr class="dim"><td class="meth">BM25</td><td class="num n">0.644</td><td class="n">0.411</td></tr>
+            <tr class="dim"><td class="meth">Corrective RAG (CRAG)</td><td class="num n">0.658</td><td class="n">0.415</td></tr>
+            <tr><td class="meth">Hybrid (BM25+Dense, RRF)</td><td class="num n">0.695</td><td class="n">0.433</td></tr>
+            <tr><td class="meth">Contextual Hybrid</td><td class="num n">0.717</td><td class="n">0.454</td></tr>
+            <tr class="best"><td class="meth">Hybrid + Cohere Rerank</td><td class="num n">0.816</td><td class="n">0.605</td></tr>
+          </tbody>
+        </table>
+        <div class="grid stagger" style="grid-template-columns:1fr;gap:16px;align-content:start">
+          <div class="card lt"><h3>BM25 &gt; dense</h3><p>Lexical signal carries fact-dense corpora — plan numbers, acronyms, codes. Your synonym maps aren't legacy work.</p></div>
+          <div class="card lt"><h3>Reranker = biggest lever</h3><p><b>+0.121 Recall@5</b> over hybrid alone. Candidate depth matters — feed it 50–100, not 10.</p></div>
+          <div class="card lx"><h3>"Smart" single-stage loses</h3><p>CRAG, multi-query, HyDE all lose to dumb hybrid + a good reranker.</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="cbot"><span>Source · arXiv 2604.01733 (verified)</span><span class="sep">|</span><span>Mirrored by Azure / MIRACL benchmarks</span>
+      <span class="r">05 / 20</span></div>
+  </section>
+
+  <!-- ============ 06 · TIER 1 · HYBRID + RERANKER ============ -->
+  <section class="slide">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / tier_1 / <b>hybrid_reranker</b></div><div class="r">Adopt</div></div>
+    <div class="wrap">
+      <span class="kicker reveal">Tier 1 · adopt</span>
+      <div class="reveal" style="display:flex;align-items:center;gap:20px"><h2>Hybrid + semantic reranker</h2><span class="chip c-adopt">validated</span></div>
+      <p class="lead reveal">Microsoft's own numbers echo the benchmark — and the reranker is multilingual, which matters for your EN/FR split.</p>
+      <div class="metrics reveal" style="margin-top:30px">
+        <div class="m"><div class="v">60.1</div><div class="l">NDCG@3 hybrid + ranker (vs 48.4 hybrid, 43.8 vector, 40.6 keyword)</div></div>
+        <div class="m"><div class="v">72.0</div><div class="l">NDCG@10 on multilingual MIRACL (vs 58.8 hybrid alone)</div></div>
+        <div class="m"><div class="v am">+23.0</div><div class="l">NDCG@3 on the Insurance / French MIML cell</div></div>
+        <div class="m"><div class="v am">~2×</div><div class="l">Nov-2024 ranker vs prior generation's gain</div></div>
+      </div>
+      <div class="grid stagger" style="grid-template-columns:1fr 1fr;margin-top:26px">
+        <div class="card lt"><h3>Action</h3><p>Keep hybrid + RRF + semantic ranker as the backbone. <b>A/B the Azure ranker vs an external cross-encoder</b> (Cohere Rerank 3.5 — multilingual) on the golden set.</p></div>
+        <div class="card la"><h3>Re-test if stale</h3><p>If you benchmarked Azure's ranker before late 2024, those results are obsolete — the current generation buys far more relevance.</p></div>
+      </div>
+    </div>
+    <div class="cbot"><span>Source · Azure hybrid + ranking · MIML · MIRACL</span><span class="sep">|</span><span class="ok">● confidence: high</span>
+      <span class="r">06 / 20</span></div>
+  </section>
+
+  <!-- ============ 07 · TIER 1 · CONTEXTUAL RETRIEVAL ============ -->
+  <section class="slide glow-c">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / tier_1 / <b>contextual_chunks</b></div><div class="r">Adopt · pull forward</div></div>
+    <div class="wrap">
+      <span class="kicker reveal">Tier 1 · the cheapest verified lift</span>
+      <div class="reveal" style="display:flex;align-items:center;gap:20px"><h2>Contextual (situated) chunks</h2><span class="chip c-adopt">pull forward</span></div>
+      <p class="lead reveal">Prepend a short LLM-generated context to each chunk before embedding <b>and</b> BM25 indexing. Verified twice — and nearly free for you.</p>
+      <div class="cols reveal" style="grid-template-columns:1fr 1fr;margin-top:26px">
+        <div class="card lt"><h3>Anthropic — failure rate</h3>
+          <div style="display:flex;align-items:center;gap:18px;margin:14px 0 6px">
+            <span class="big rd" style="font-size:38px">5.7%</span><span class="arrow">→</span>
+            <span class="big" style="font-size:38px;color:var(--amber)">2.9%</span><span class="arrow">→</span>
+            <span class="big" style="font-size:38px">1.9%</span></div>
+          <p>Top-20 retrieval failure: standard → contextual embeddings + contextual BM25 → <b>+ reranker (67% total reduction)</b>.</p></div>
+        <div class="card lt"><h3>T2-RAGBench — Recall@5</h3>
+          <div style="display:flex;align-items:center;gap:18px;margin:14px 0 6px">
+            <span class="big tx" style="font-size:38px">0.695</span><span class="arrow">→</span>
+            <span class="big" style="font-size:38px">0.717</span></div>
+          <p>Contextual Hybrid beats vanilla Hybrid. Paper's verdict: "contextual retrieval provides <b>consistent gains</b>."</p></div>
+      </div>
+      <div class="card la reveal" style="margin-top:22px">
+        <h3>Why it's almost free here</h3>
+        <p>You already have <b>llm_summary</b>, <b>Title</b>, <b>Business_Unit</b> &amp; <b>llm_category</b> per article. A minimal version — prepend title + summary + category breadcrumb to every chunk — needs no new enrichment. Report A missed this entirely; your own analysis filed it under "long-term." <b style="color:var(--teal)">Move it to the first sprint after chunking.</b></p>
+      </div>
+    </div>
+    <div class="cbot"><span>Source · Anthropic Contextual Retrieval · T2-RAGBench</span><span class="sep">|</span><span class="ok">● confidence: high</span>
+      <span class="r">07 / 20</span></div>
+  </section>
+
+  <!-- ============ 08 · TIER 2 · AGENTIC RETRIEVAL ============ -->
+  <section class="slide glow-r">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / tier_2 / <b>agentic_retrieval</b></div><div class="r">Route · complex only</div></div>
+    <div class="wrap">
+      <span class="kicker am reveal">Tier 2 · route, don't blanket-apply</span>
+      <div class="reveal" style="display:flex;align-items:center;gap:20px"><h2>Agentic retrieval <span class="am">— for the complex tail</span></h2><span class="chip c-route">conditional</span></div>
+      <p class="lead reveal">Azure's agentic retrieval (LLM query planning → parallel subqueries → per-subquery hybrid + rank → merge), benchmarked against <b>exactly your planned stack</b>.</p>
+      <div class="metrics reveal" style="margin-top:30px">
+        <div class="m"><div class="v am">+16 pts</div><div class="l">Answer relevance · complex multi-doc queries (up to +33)</div></div>
+        <div class="m"><div class="v rd">+0.03</div><div class="l">Simple / classical queries — i.e., nothing</div></div>
+        <div class="m"><div class="v am">+10.3</div><div class="l">French complex queries (French classical: +0.84)</div></div>
+      </div>
+      <div class="card la reveal" style="margin-top:26px">
+        <h3>The lesson is routing, not adoption</h3>
+        <p>Classify queries (length · entities · turn-count). Send <b>~80%</b> down the fast hybrid + ranker path; send the complex tail to agentic retrieval — capping its cost and latency. Caveat: the feature is <b style="color:var(--amber)">preview</b> — wrap it behind a flag with a fallback.</p>
+      </div>
+      <div class="pipe reveal" style="margin-top:22px">
+        <span class="node">query</span><span class="arrow">→</span>
+        <span class="node am">classify</span><span class="arrow">→</span>
+        <span class="node on">~80% fast: hybrid + rank</span><span class="arrow">·</span>
+        <span class="node am">~20% complex: agentic</span>
+      </div>
+    </div>
+    <div class="cbot"><span>Source · Azure agentic retrieval engine + docs</span><span class="sep">|</span><span style="color:var(--amber)">● confidence: medium · preview</span>
+      <span class="r">08 / 20</span></div>
+  </section>
+
+  <!-- ============ 09 · TIER 2 · QUERY REWRITE ============ -->
+  <section class="slide">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / tier_2 / <b>query_rewrite_multiquery</b></div><div class="r">Keep · expect little</div></div>
+    <div class="wrap">
+      <span class="kicker am reveal">Tier 2 · keep, but expect little</span>
+      <div class="reveal" style="display:flex;align-items:center;gap:20px"><h2>Query rewrite &amp; multi-query</h2><span class="chip c-route">fallback only</span></div>
+      <p class="lead reveal">Once hybrid + the new semantic ranker are in place, generative rewriting adds little — its wins concentrate on hard, misspelled, keyword-code queries.</p>
+      <div class="grid stagger" style="grid-template-columns:repeat(3,1fr);margin-top:32px">
+        <div class="card la"><div class="big am" style="font-size:40px">+0.0–1.7</div><h3 style="margin-top:12px">on hybrid configs</h3><p>NDCG@3 gain from query rewriting once the ranker is present (Microsoft's own data).</p></div>
+        <div class="card lt"><div class="big" style="font-size:40px">+4 to +6</div><h3 style="margin-top:12px">on hard queries</h3><p>Text-only indexes (+4) and misspelled / keyword-code / "hard" queries (+6) — the real use case.</p></div>
+        <div class="card ld"><div class="big tx" style="font-size:40px">0.640</div><h3 style="margin-top:12px">≈ plain BM25 (0.644)</h3><p>T2-RAGBench: multi-query barely moves recall on well-formed domain queries.</p></div>
+      </div>
+      <div class="card la reveal" style="margin-top:24px">
+        <h3>Verdict</h3><p>A targeted fallback for failed / hard / misspelled queries — not a default pipeline stage. Note: Azure's native rewrite is <b style="color:var(--amber)">preview, not production-recommended</b>, and needs <b>queryLanguage</b> per request (fr-FR / fr-CA supported) — so detect query language first.</p>
+      </div>
+    </div>
+    <div class="cbot"><span>Source · Azure QR + semantic ranker · T2-RAGBench</span><span class="sep">|</span><span>Report A overstated this lift</span>
+      <span class="r">09 / 20</span></div>
+  </section>
+
+  <!-- ============ 10 · CAUTION · HYDE ============ -->
+  <section class="slide glow-r">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / caution / <b>hyde</b></div><div class="r">Demote</div></div>
+    <div class="wrap">
+      <span class="kicker rd reveal">The contrarian finding</span>
+      <div class="reveal" style="display:flex;align-items:center;gap:20px"><h2>HyDE <span class="rd">can hurt</span> here.</h2><span class="chip c-skip">demote</span></div>
+      <p class="lead reveal">Report A's #2 recommendation was "pilot HyDE for difficult queries." On fact-dense content, the evidence runs the other way.</p>
+      <div class="cols reveal" style="grid-template-columns:.8fr 1.2fr;margin-top:30px">
+        <div class="card lx" style="display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center">
+          <div style="display:flex;align-items:center;gap:18px">
+            <div><div class="big rd" style="font-size:54px">0.544</div><p style="margin-top:8px">HyDE</p></div>
+            <span class="arrow" style="font-size:24px">&lt;</span>
+            <div><div class="big tx" style="font-size:54px">0.587</div><p style="margin-top:8px">plain dense</p></div>
+          </div>
+          <p style="margin-top:18px;font-size:16px">Recall@5 · T2-RAGBench</p>
+        </div>
+        <div class="grid stagger" style="grid-template-columns:1fr;gap:16px;align-content:center">
+          <div class="card lx"><h3>Why it backfires</h3><p>Hypothetical documents hallucinate plausible-but-wrong specifics — <b>plan numbers, amounts, dates</b> — dragging retrieval toward the wrong neighborhood.</p></div>
+          <div class="card ld"><h3>Where it works (not you)</h3><p>HyDE's published wins are on open-web, underspecified queries. Your corpus of plan numbers and procedure codes is exactly the failure case.</p></div>
+          <div class="card la"><h3>If ever tested</h3><p>Gate to short / vague queries only, and measure against the golden set first.</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="cbot"><span>Source · arXiv 2604.01733 (verified)</span><span class="sep">|</span><span style="color:var(--red)">● overturns Report A · pick #2</span>
+      <span class="r">10 / 20</span></div>
+  </section>
+
+  <!-- ============ 11 · TIER 3 · GRAPHRAG ============ -->
+  <section class="slide">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / tier_3 / <b>graphrag_raptor</b></div><div class="r">Defer</div></div>
+    <div class="wrap">
+      <span class="kicker rd reveal">Tier 3 · skip or defer</span>
+      <div class="reveal" style="display:flex;align-items:center;gap:20px"><h2>GraphRAG &amp; RAPTOR</h2><span class="chip c-defer">defer · with trigger</span></div>
+      <p class="lead reveal">A systematic RAG-vs-GraphRAG evaluation: graph/hierarchical indexing offers no lift for predominantly single-hop, FAQ-style corpora.</p>
+      <div class="grid stagger" style="grid-template-columns:repeat(3,1fr);margin-top:32px">
+        <div class="card lx"><h3>Loses on single-hop</h3><p>Natural Questions F1: <b>RAG 64.78</b> &gt; Community-GraphRAG 63.01 &gt; RAPTOR 60.04. RAG also wins detail questions (55.28 vs 46.88).</p></div>
+        <div class="card ld"><h3>Wins only multi-hop</h3><p>And only by <b>~2–3 points</b> (MultiHop-RAG: 70.27 vs 67.02) — a thin payoff for a heavy system.</p></div>
+        <div class="card lx"><h3>40–57× indexing cost</h3><p>135s → 5,560–7,702s to build on the same corpus, and quality depends on the graph-construction model.</p></div>
+      </div>
+      <div class="card la reveal" style="margin-top:24px">
+        <h3>LazyGraphRAG — the exception, narrowly</h3>
+        <p>It swept 96/96 pairwise comparisons in Microsoft's BenchmarkQED — but its edge is on <b>global / aggregative</b> questions ("summarize everything about X"), which a support chatbot rarely sees. <b style="color:var(--amber)">Trigger to revisit:</b> production logs show multi-hop or corpus-wide aggregate queries failing at volume.</p>
+      </div>
+    </div>
+    <div class="cbot"><span>Source · arXiv 2502.11371 · BenchmarkQED</span><span class="sep">|</span><span style="color:var(--red)">● tempers Report A · pick #5</span>
+      <span class="r">11 / 20</span></div>
+  </section>
+
+  <!-- ============ 12 · TIER 3 · LONG-CONTEXT / COLBERT / SELF-RAG ============ -->
+  <section class="slide glow-r">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / tier_3 / <b>longctx_colbert_selfrag</b></div><div class="r">Skip / borrow</div></div>
+    <div class="wrap">
+      <span class="kicker reveal">Tier 3 · three more, decided</span>
+      <h2 class="reveal">Long-context · ColBERT · Self-RAG.</h2>
+      <div class="grid stagger" style="grid-template-columns:repeat(3,1fr);margin-top:34px">
+        <div class="card lx"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Long-context</h3><span class="chip c-skip">no</span></div>
+          <p style="margin-top:12px">8k → 120k context didn't help; even 1M tokens lost to structured retrieval. Your corpus is far too large anyway. <b>RAG isn't being displaced at 5k docs</b> — that story is for &lt;100-doc corpora.</p></div>
+        <div class="card lx"><div style="display:flex;justify-content:space-between;align-items:center"><h3>ColBERT / SPLADE</h3><span class="chip c-skip">skip</span></div>
+          <p style="margin-top:12px">No Azure-native support → a second index + duplicated ACL trimming. No head-to-head evidence it beats hybrid + rerank on this doc type. The reranker already gives token-level scoring at the top of the funnel.</p></div>
+        <div class="card lt"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Self-RAG</h3><span class="chip c-adopt">borrow idea</span></div>
+          <p style="margin-top:12px">Full version needs a custom model with reflection tokens — impractical. Take the transferable 20%: an orchestration-level <b>groundedness gate</b> → retry or escalate. Both reports agree.</p></div>
+      </div>
+      <div class="card ld reveal" style="margin-top:24px"><p style="font-size:19px;color:var(--text)">Each sits in a <b>triggered backlog</b> — re-opened on named log evidence, not relitigated every planning cycle.</p></div>
+    </div>
+    <div class="cbot"><span>Source · BenchmarkQED · context-rot · T2-RAGBench</span><span class="sep">|</span><span>ColBERT overturns Report A · pick #4</span>
+      <span class="r">12 / 20</span></div>
+  </section>
+
+  <!-- ============ 13 · WHERE THEY AGREE ============ -->
+  <section class="slide">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / reconcile / <b>agreements</b></div><div class="r">Reconcile</div></div>
+    <div class="wrap">
+      <span class="kicker reveal">Reconciliation · where both reports agree</span>
+      <h2 class="reveal">The settled core.</h2>
+      <p class="lead reveal">Six items where the survey and the benchmark evidence point the same way — the parts you can build with confidence.</p>
+      <div class="grid stagger" style="grid-template-columns:repeat(3,1fr);margin-top:30px">
+        <div class="card lt"><span class="chip c-adopt">backbone</span><h3 style="margin-top:14px">Hybrid BM25 + vector + RRF</h3><p>The base of every winning configuration.</p></div>
+        <div class="card lt"><span class="chip c-adopt">biggest lever</span><h3 style="margin-top:14px">Semantic reranking</h3><p>Cross-encoder scoring at the top of the funnel.</p></div>
+        <div class="card lt"><span class="chip c-adopt">best practice</span><h3 style="margin-top:14px">Heading-aware chunking + parent–child</h3><p>Uncontested; small-to-big context stitching.</p></div>
+        <div class="card lt"><span class="chip c-adopt">borrow</span><h3 style="margin-top:14px">Self-RAG principles</h3><p>Groundedness gate, abstain / escalate — no retraining.</p></div>
+        <div class="card lt"><span class="chip c-adopt">convergent</span><h3 style="margin-top:14px">Fast / slow tiering = query routing</h3><p>Both arrived here independently — the strongest shared insight.</p></div>
+        <div class="card lt"><span class="chip c-adopt">measure</span><h3 style="margin-top:14px">Golden-set evaluation + A/B</h3><p>Every cited gain was found via exactly this loop.</p></div>
+      </div>
+    </div>
+    <div class="cbot"><span><span class="ok">●</span> 6 of 12 techniques: consensus</span><span class="sep">|</span><span>build these first</span>
+      <span class="r">13 / 20</span></div>
+  </section>
+
+  <!-- ============ 14 · WHERE THEY CONFLICT ============ -->
+  <section class="slide glow-r">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / reconcile / <b>conflicts</b></div><div class="r">Reconcile · who wins</div></div>
+    <div class="wrap">
+      <span class="kicker rd reveal">Reconciliation · where they conflict</span>
+      <h2 class="reveal">Who wins — and why.</h2>
+      <table class="tbl reveal" style="margin-top:18px">
+        <thead><tr><th style="width:20%">Technique</th><th style="width:26%">Report A says</th><th style="width:30%">Report B says (evidence)</th><th style="width:24%">Final call</th></tr></thead>
+        <tbody>
+          <tr><td>Contextual chunks</td><td class="meth">Absent — its biggest gap</td><td>Verified 2× · cheapest lift</td><td><span class="chip c-adopt">adopt · sprint 1</span></td></tr>
+          <tr><td>HyDE</td><td class="meth">Pilot it (#2)</td><td class="meth" style="color:var(--red)">0.544 &lt; 0.587 — measured harm</td><td><span class="chip c-skip">backlog</span></td></tr>
+          <tr><td>RAG-Fusion / multi-query</td><td class="meth">Adopt (#3)</td><td class="meth">≈0 lift once ranker present</td><td><span class="chip c-route">fallback</span></td></tr>
+          <tr><td>ColBERT / late interaction</td><td class="meth">Pilot (#4)</td><td class="meth">No Azure path · no head-to-head win</td><td><span class="chip c-skip">skip</span></td></tr>
+          <tr><td>GraphRAG</td><td class="meth">Prototype (#5)</td><td class="meth">Loses single-hop · 40–57× cost</td><td><span class="chip c-defer">defer · trigger</span></td></tr>
+          <tr><td>Agentic retrieval</td><td class="meth">Absent</td><td>+16 complex / +0.03 simple</td><td><span class="chip c-route">route · complex</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cbot"><span style="color:var(--red)">● 3 of A's 6 numbered picks overturned</span><span class="sep">|</span><span>evidence breaks the ties</span>
+      <span class="r">14 / 20</span></div>
+  </section>
+
+  <!-- ============ 15 · OVERALL BEST PICK ============ -->
+  <section class="slide glow-c">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / <b>best_pick</b></div><div class="r">Decision</div></div>
+    <div class="wrap">
+      <span class="kicker reveal">Overall best pick</span>
+      <h2 class="reveal">Report B is the <span class="ac">foundation</span>. Report A is folded in.</h2>
+      <p class="lead reveal">The deciding factor is the <b>kind</b> of evidence. Head-to-head tests on this corpus type beat proposer-paper wins on open-web benchmarks.</p>
+      <div class="cols reveal" style="grid-template-columns:1fr 1fr;margin-top:28px">
+        <div class="card lt"><h3 style="color:var(--teal)">Why B wins the base</h3>
+          <p style="margin-top:10px">Three of A's six picks don't survive head-to-head testing (HyDE, RAG-Fusion, ColBERT), and A misses the two highest-value items entirely — <b>contextual chunks</b> and <b>agentic retrieval</b> — plus the reranker's outsized role.</p></div>
+        <div class="card la"><h3 style="color:var(--amber)">What A keeps</h3>
+          <p style="margin-top:10px">Three lasting contributions carried into the plan: <b>fast / slow tiering</b> (converges with routing), <b>Self-RAG-as-orchestration</b> (groundedness gate, no retraining), and <b>LLM data-handling governance</b>.</p></div>
+      </div>
+      <div class="card ld reveal" style="margin-top:24px">
+        <p style="font-size:20px;color:var(--text)">Net: <b>keep the benchmark-grounded verdicts as the spine; graft on the survey's operational discipline.</b> Neither report alone is the plan — the reconciliation is.</p>
+      </div>
+    </div>
+    <div class="cbot"><span><span class="ok">●</span> foundation: Report B</span><span class="sep">|</span><span style="color:var(--amber)">● grafted: Report A ops</span>
+      <span class="r">15 / 20</span></div>
+  </section>
+
+  <!-- ============ 16 · ROADMAP VERDICT ============ -->
+  <section class="slide">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / <b>roadmap_verdict</b></div><div class="r">Audit</div></div>
+    <div class="wrap">
+      <span class="kicker reveal">Your existing roadmap, audited</span>
+      <h2 class="reveal">Validated · superseded · missing.</h2>
+      <div class="cols stagger" style="grid-template-columns:repeat(3,1fr);margin-top:30px">
+        <div class="card lt"><h3 style="color:var(--teal)">✓ Validated — keep</h3>
+          <p style="margin-top:12px;line-height:1.7">Hybrid + RRF<br>Semantic reranker <span style="color:var(--teal)">(undersold)</span><br>Synonym maps · analyzers<br>Heading-aware chunking · parent–child<br>Golden-set evaluation</p></div>
+        <div class="card lx"><h3 style="color:var(--red)">↓ Superseded — demote</h3>
+          <p style="margin-top:12px;line-height:1.7">HyDE → backlog (harm)<br>Multi-query → fallback<br>Query rewrite → hard queries only<br>GraphRAG → drop, with trigger<br>ColBERT → skip on Azure</p></div>
+        <div class="card la"><h3 style="color:var(--amber)">+ Missing — add</h3>
+          <p style="margin-top:12px;line-height:1.7">Query-class routing<br>llm_faqs as a retrieval channel<br>Cross-language (EN↔FR) policy<br>Reranker depth + model ablation<br>Contextual chunks <span style="color:var(--teal)">(pull forward)</span></p></div>
+      </div>
+      <div class="card ld reveal" style="margin-top:24px"><p style="font-size:19px;color:var(--text)">Agentic orchestrator: keep — but <b>scope it</b> to the complex-query tier, not the whole pipeline.</p></div>
+    </div>
+    <div class="cbot"><span>10 roadmap items scored against the evidence</span><span class="sep">|</span><span class="ok">● most of the plan holds</span>
+      <span class="r">16 / 20</span></div>
+  </section>
+
+  <!-- ============ 17 · WHAT'S MISSING ============ -->
+  <section class="slide glow-r">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / <b>gaps</b></div><div class="r">Add</div></div>
+    <div class="wrap">
+      <span class="kicker am reveal">What's missing from the roadmap</span>
+      <h2 class="reveal">Four additions — highest leverage first.</h2>
+      <div class="grid stagger" style="grid-template-columns:1fr 1fr;margin-top:30px">
+        <div class="card la"><div style="display:flex;gap:16px;align-items:baseline"><span class="big am" style="font-size:36px">01</span><h3>Query-class routing</h3></div>
+          <p style="margin-top:10px">The meta-finding: no technique wins everywhere. A cheap classifier in front of the retriever — with per-class A/B — is the highest-leverage architectural add. Stratify the golden set by complexity class too.</p></div>
+        <div class="card lt"><div style="display:flex;gap:16px;align-items:baseline"><span class="big" style="font-size:36px">02</span><h3>llm_faqs as a channel</h3></div>
+          <p style="margin-top:10px">~4,600 article-level question sets already exist — free doc2query. Index each FAQ question as searchable + vector, mapped to its article. Query-to-question matching is strong for FAQ corpora. Measure it.</p></div>
+        <div class="card lt"><div style="display:flex;gap:16px;align-items:baseline"><span class="big" style="font-size:36px">03</span><h3>Cross-language policy</h3></div>
+          <p style="margin-top:10px">Decide explicitly whether an EN query may retrieve a FR-only article. If yes → multilingual embeddings + multilingual reranker (MIRACL-validated). BM25 won't cross languages.</p></div>
+        <div class="card lt"><div style="display:flex;gap:16px;align-items:baseline"><span class="big" style="font-size:36px">04</span><h3>Reranker depth + model ablation</h3></div>
+          <p style="margin-top:10px">Candidate depth (20 / 50 / 100) × model (Azure SR · Cohere 3.5 · LLM-rerank). High-impact, measurable knobs — treat as first-class golden-set experiments.</p></div>
+      </div>
+    </div>
+    <div class="cbot"><span>Gaps not in the original plan</span><span class="sep">|</span><span style="color:var(--amber)">● routing is the big one</span>
+      <span class="r">17 / 20</span></div>
+  </section>
+
+  <!-- ============ 18 · TARGET ARCHITECTURE ============ -->
+  <section class="slide">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / <b>architecture</b></div><div class="r">Design</div></div>
+    <div class="wrap">
+      <span class="kicker reveal">The consolidated architecture</span>
+      <h2 class="reveal">Detect → route → retrieve → gate.</h2>
+      <div class="reveal" style="margin-top:26px;display:flex;flex-direction:column;align-items:center;gap:18px">
+        <div class="pipe" style="justify-content:center">
+          <span class="node"><span class="k">user query</span></span><span class="arrow">→</span>
+          <span class="node on">language detect · en / fr</span><span class="arrow">→</span>
+          <span class="node am">query-class router</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;width:100%;max-width:1500px;margin-top:6px">
+          <div class="card lt"><h3 style="color:var(--teal)">Fast path · ~80%</h3>
+            <p style="margin-top:10px">Hybrid BM25 + vector (RRF) over <b>contextual chunks</b> + <b>llm_faqs</b> channel → semantic ranker <b>(depth 50–100)</b>.</p></div>
+          <div class="card la"><h3 style="color:var(--amber)">Slow path · ~20%</h3>
+            <p style="margin-top:10px">Azure <b>agentic retrieval</b> — LLM query planning → parallel subqueries → per-subquery hybrid + rank. Behind a preview flag; falls back to fast path.</p></div>
+        </div>
+        <div class="pipe" style="justify-content:center;margin-top:4px">
+          <span class="node">merge</span><span class="arrow">→</span>
+          <span class="node on">ACL trim · latest-version · freshness / persona profiles</span><span class="arrow">→</span>
+          <span class="node am">groundedness gate</span>
+        </div>
+        <div class="card ld reveal" style="width:100%;max-width:1500px">
+          <p style="font-size:19px;color:var(--text);text-align:center"><b>Groundedness gate:</b> answer must cite a retrieved <b>Title + content_path</b> → weak support retries with query-rewrite fallback → else <b style="color:var(--amber)">abstain &amp; escalate</b>.</p>
+        </div>
+      </div>
+    </div>
+    <div class="cbot"><span><span class="ok">●</span> index</span><span class="sep">|</span><span><span class="ok">●</span> rank</span><span class="sep">|</span><span style="color:var(--amber)">● route</span><span class="sep">|</span><span>● gate</span>
+      <span class="r">18 / 20</span></div>
+  </section>
+
+  <!-- ============ 19 · THE PHASED PLAN ============ -->
+  <section class="slide glow-c">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / <b>phased_plan</b></div><div class="r">Execute</div></div>
+    <div class="wrap">
+      <span class="kicker reveal">The sequence</span>
+      <h2 class="reveal">Ship the verified lift first.</h2>
+      <div class="cols stagger" style="grid-template-columns:repeat(4,1fr);margin-top:30px">
+        <div class="card lt"><div class="big" style="font-size:30px">P0</div><h3 style="margin-top:10px;font-size:21px">Ingest hygiene</h3>
+          <p style="margin-top:8px">HTML→Markdown · entity decode · de-dup · <b>PII redaction before embedding</b> · heading-aware chunking + parent–child IDs.</p></div>
+        <div class="card lt"><div class="big" style="font-size:30px">P1</div><h3 style="margin-top:10px;font-size:21px">Verified core · sprint 1–2</h3>
+          <p style="margin-top:8px"><b>Contextual chunks</b> · hybrid + current ranker · <b>golden set live first</b> (stratified by class / lang) · tracing.</p></div>
+        <div class="card lt"><div class="big" style="font-size:30px">P2</div><h3 style="margin-top:10px;font-size:21px">Rank &amp; channels · sprint 3–4</h3>
+          <p style="margin-top:8px"><b>Reranker ablation</b> · llm_faqs channel · synonym maps · freshness · latest-version · ACL trimming.</p></div>
+        <div class="card la"><div class="big am" style="font-size:30px">P3</div><h3 style="margin-top:10px;font-size:21px">Routing &amp; tail · Q2</h3>
+          <p style="margin-top:8px"><b>Query-class router</b> · agentic retrieval (flagged) · query-rewrite fallback · groundedness gate · cross-language decision.</p></div>
+      </div>
+      <div class="card ld reveal" style="margin-top:22px">
+        <h3 style="color:var(--muted)">Backlog — re-open only on a named trigger</h3>
+        <p style="margin-top:8px">GraphRAG / LazyGraphRAG <span style="color:var(--dim)">(multi-hop logs)</span> · HyDE <span style="color:var(--dim)">(a vague-query tier underperforms)</span> · ColBERT / SPLADE <span style="color:var(--dim)">(off-Azure migration)</span> · embedding fine-tuning <span style="color:var(--dim)">(systematic vocab misses)</span>.</p>
+      </div>
+    </div>
+    <div class="cbot"><span>Golden set goes in <b style="color:var(--text)">first</b>, not last</span><span class="sep">|</span><span class="ok">● every gain was measured</span>
+      <span class="r">19 / 20</span></div>
+  </section>
+
+  <!-- ============ 20 · WHY THIS PLAN / CLOSE ============ -->
+  <section class="slide glow-c">
+    <div class="ctop"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="path">~/ retrieval / <b>why_this_plan</b></div><div class="r">Close</div></div>
+    <div class="wrap" style="justify-content:center">
+      <span class="kicker reveal">In one breath</span>
+      <h2 class="reveal" style="font-size:54px;max-width:1640px;line-height:1.08">Retrieval quality is won in <span class="ac">what you index</span>, <span class="ac">how you rank</span>, and <span class="am">how you route</span>.</h2>
+      <p class="lead reveal" style="margin-top:24px;max-width:1640px">Contextually enriched, de-duplicated, PII-safe chunks; hybrid recall plus a strong reranker at the right depth; a cheap path for the 80% of simple lookups and LLM-planned retrieval for the complex 20%. Everything else — HyDE, multi-query, GraphRAG, late interaction — measured flat-to-negative here or cost platform-breaking complexity, so it waits in a triggered backlog. <b>The golden set goes in first, because every number here was only discoverable through that loop.</b></p>
+      <div class="metrics reveal" style="margin-top:36px;max-width:1640px">
+        <div class="m"><div class="v">0.816</div><div class="l">Recall@5 · the architecture to keep</div></div>
+        <div class="m"><div class="v">67%</div><div class="l">Retrieval-failure cut · contextual + rerank</div></div>
+        <div class="m"><div class="v am">80 / 20</div><div class="l">Fast path vs routed complex tail</div></div>
+        <div class="m"><div class="v tx">1</div><div class="l">Consolidated plan · two reports reconciled</div></div>
+      </div>
+      <p class="reveal" style="margin-top:34px;font-size:15px;color:var(--dim);letter-spacing:.06em;max-width:1640px">SOURCES · T2-RAGBench (arXiv 2604.01733, verified) · Anthropic Contextual Retrieval · Azure hybrid / semantic-ranker / agentic-retrieval benchmarks · RAG-vs-GraphRAG (arXiv 2502.11371) · BenchmarkQED. Vendor numbers are self-reported; the independent papers are the strongest neutral evidence — and they point the same way.</p>
+    </div>
+    <div class="cbot"><span><span class="ok">●</span> final_retrieval_strategy.md</span><span class="sep">|</span><span>Internal Review · 2026·06·10</span>
+      <span class="r">20 / 20</span></div>
+  </section>
+
+</main>
+</div>
+
+<script>
+  /* ===========================================
+     SLIDE CONTROLLER — scale, nav, progress, edit
+     =========================================== */
+  class SlidePresentation{
+    constructor(){
+      this.slides=[...document.querySelectorAll('.slide')];
+      this.i=0;
+      this.stage=document.getElementById('deckStage');
+      this.progress=document.getElementById('progress');
+      this.scale();
+      addEventListener('resize',()=>this.scale());
+      this.keys();this.touch();this.wheel();
+      this.show(0);
+    }
+    scale(){
+      const f=Math.min(innerWidth/1920,innerHeight/1080);
+      const x=(innerWidth-1920*f)/2, y=(innerHeight-1080*f)/2;
+      this.stage.style.transform=`translate(${x}px,${y}px) scale(${f})`;
+    }
+    show(n){
+      this.i=Math.max(0,Math.min(n,this.slides.length-1));
+      this.slides.forEach((s,k)=>{s.classList.toggle('active',k===this.i);s.classList.toggle('visible',k===this.i);});
+      this.progress.style.width=((this.i+1)/this.slides.length*100)+'%';
+    }
+    next(){this.show(this.i+1)} prev(){this.show(this.i-1)}
+    keys(){
+      addEventListener('keydown',e=>{
+        if(e.target.getAttribute&&e.target.getAttribute('contenteditable')==='true')return;
+        if(['ArrowRight','ArrowDown',' ','PageDown'].includes(e.key)){e.preventDefault();this.next();}
+        else if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();this.prev();}
+        else if(e.key==='Home'){this.show(0)} else if(e.key==='End'){this.show(this.slides.length-1)}
+      });
+    }
+    touch(){
+      let x0=0,y0=0;
+      addEventListener('touchstart',e=>{x0=e.changedTouches[0].clientX;y0=e.changedTouches[0].clientY},{passive:true});
+      addEventListener('touchend',e=>{
+        const dx=e.changedTouches[0].clientX-x0, dy=e.changedTouches[0].clientY-y0;
+        if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>50){dx<0?this.next():this.prev();}
+      },{passive:true});
+    }
+    wheel(){
+      let lock=false;
+      addEventListener('wheel',e=>{
+        if(lock)return;
+        if(Math.abs(e.deltaY)<24)return;
+        lock=true;e.deltaY>0?this.next():this.prev();
+        setTimeout(()=>lock=false,650);
+      },{passive:true});
+    }
+  }
+  const deck=new SlidePresentation();
+
+  /* ===========================================
+     INLINE EDIT MODE (hover top-left or press E)
+     =========================================== */
+  const editor={
+    isActive:false,
+    toggleEditMode(){
+      this.isActive=!this.isActive;
+      const t=document.getElementById('editToggle');
+      t.classList.toggle('active',this.isActive);
+      t.classList.toggle('show',this.isActive);
+      document.querySelectorAll('h1,h2,h3,p,span,td,th,.l').forEach(el=>{
+        if(el.closest('.ctop')||el.closest('.cbot')||el.classList.contains('edit-toggle'))return;
+        el.setAttribute('contenteditable',this.isActive);
+      });
+      if(!this.isActive)this.save();
+    },
+    save(){try{localStorage.setItem('rds_deck',document.querySelector('.deck-stage').innerHTML)}catch(e){}}
+  };
+  document.getElementById('editToggle').addEventListener('click',()=>editor.toggleEditMode());
+  const hz=document.querySelector('.edit-hotzone'),et=document.getElementById('editToggle');
+  let ht=null;
+  hz.addEventListener('mouseenter',()=>{clearTimeout(ht);et.classList.add('show')});
+  hz.addEventListener('mouseleave',()=>{ht=setTimeout(()=>{if(!editor.isActive)et.classList.remove('show')},400)});
+  et.addEventListener('mouseenter',()=>clearTimeout(ht));
+  et.addEventListener('mouseleave',()=>{ht=setTimeout(()=>{if(!editor.isActive)et.classList.remove('show')},400)});
+  hz.addEventListener('click',()=>editor.toggleEditMode());
+  addEventListener('keydown',e=>{
+    if((e.key==='e'||e.key==='E')&&!(e.target.getAttribute&&e.target.getAttribute('contenteditable')==='true'))editor.toggleEditMode();
+    if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();editor.save();et.textContent='✓';setTimeout(()=>et.textContent='✎',900);}
+  });
+  /* restore prior edits if present */
+  try{const saved=localStorage.getItem('rds_deck');if(saved)document.querySelector('.deck-stage').innerHTML=saved;}catch(e){}
+</script>
+</body>
+</html>

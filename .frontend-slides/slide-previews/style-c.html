@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Style C</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* === RETRIEVAL CONSOLE (custom) — dark instrumentation / IDE telemetry === */
+  :root{
+    --bg:#0C1014; --panel:#141A21; --panel-2:#1A222B; --line:#26303B;
+    --teal:#2DD4BF; --amber:#FFB454; --text:#E6EDF3; --muted:#7D8694; --dim:#4A5560;
+    --stage-bg:#05080b;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  .viewport{position:fixed;inset:0;overflow:hidden;background:var(--stage-bg);display:flex;align-items:center;justify-content:center}
+  .stage{width:1920px;height:1080px;position:relative;background:var(--bg);overflow:hidden;transform-origin:center center;
+    font-family:'JetBrains Mono',monospace}
+  /* dot-grid + teal glow atmosphere */
+  .stage::before{content:"";position:absolute;inset:0;
+    background-image:radial-gradient(var(--line) 1.4px,transparent 1.4px);background-size:34px 34px;opacity:.45}
+  .stage::after{content:"";position:absolute;width:1100px;height:1100px;left:-260px;top:-380px;border-radius:50%;
+    background:radial-gradient(circle,rgba(45,212,191,.16),transparent 62%);filter:blur(20px)}
+
+  .chrome-top{position:absolute;top:0;left:0;right:0;height:64px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:26px;padding:0 56px;background:rgba(12,16,20,.7);z-index:3}
+  .dots{display:flex;gap:10px}.dots i{width:13px;height:13px;border-radius:50%;background:var(--dim)}
+  .dots i:first-child{background:var(--amber)}.dots i:nth-child(2){background:var(--teal)}
+  .chrome-top .path{font-size:18px;color:var(--muted);letter-spacing:.04em}
+  .chrome-top .path b{color:var(--text);font-weight:500}
+  .chrome-top .right{margin-left:auto;font-size:17px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+
+  .body{position:absolute;inset:64px 0 60px 0;display:grid;grid-template-columns:1.55fr 1fr;z-index:2}
+  .left{padding:88px 64px;display:flex;flex-direction:column;justify-content:center}
+  .tag{display:inline-flex;align-items:center;gap:12px;font-size:19px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--teal);margin-bottom:34px}
+  .tag::before{content:"";width:40px;height:2px;background:var(--teal)}
+  h1{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;color:var(--text);
+    font-size:118px;line-height:.96;letter-spacing:-.025em}
+  h1 .accent{color:var(--teal)}
+  .sub{font-size:25px;color:var(--muted);line-height:1.5;margin-top:36px;max-width:840px}
+  .sub b{color:var(--text);font-weight:500}
+
+  /* pipeline tokens */
+  .pipe{display:flex;align-items:center;gap:0;margin-top:50px;flex-wrap:wrap}
+  .node{font-size:18px;letter-spacing:.04em;padding:13px 20px;border:1px solid var(--line);
+    border-radius:9px;background:var(--panel);color:var(--text)}
+  .node.on{border-color:var(--teal);color:var(--teal);box-shadow:0 0 0 1px rgba(45,212,191,.35),0 0 26px rgba(45,212,191,.18)}
+  .node .k{color:var(--muted)}
+  .arrow{color:var(--dim);padding:0 14px;font-size:18px}
+
+  /* right readout panel */
+  .right{border-left:1px solid var(--line);background:linear-gradient(180deg,var(--panel),rgba(20,26,33,.4));
+    padding:80px 56px;display:flex;flex-direction:column;justify-content:center;gap:0}
+  .readout-h{font-size:16px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin-bottom:30px}
+  .metric{padding:24px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:7px}
+  .metric:last-child{border-bottom:1px solid var(--line)}
+  .metric .v{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:52px;line-height:1;color:var(--text)}
+  .metric .v.teal{color:var(--teal)}.metric .v.amber{color:var(--amber)}
+  .metric .l{font-size:16px;color:var(--muted);letter-spacing:.04em}
+  .spark{margin-top:30px;height:60px;width:100%}
+  .spark path{fill:none;stroke:var(--teal);stroke-width:2.5;
+    stroke-dasharray:600;stroke-dashoffset:600;animation:draw 1.6s ease .6s forwards}
+  .spark .area{fill:url(#g);stroke:none;opacity:0;animation:fade .8s ease 1.4s forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}@keyframes fade{to{opacity:.5}}
+
+  .chrome-bot{position:absolute;bottom:0;left:0;right:0;height:60px;border-top:1px solid var(--line);
+    display:flex;align-items:center;gap:30px;padding:0 56px;background:rgba(12,16,20,.7);z-index:3;
+    font-size:17px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+  .chrome-bot .ok{color:var(--teal)}.chrome-bot .sep{color:var(--line)}
+  .chrome-bot .r{margin-left:auto;color:var(--muted)}
+
+  .reveal{opacity:0;transform:translateY(22px);animation:rise .8s cubic-bezier(.2,.7,.2,1) forwards}
+  .tag{animation-delay:.1s}h1{animation-delay:.2s}.sub{animation-delay:.38s}.pipe{animation-delay:.52s}
+  .right{animation-delay:.3s}.chrome-top{animation-delay:.02s}.chrome-bot{animation-delay:.7s}
+  @keyframes rise{to{opacity:1;transform:translateY(0)}}
+  @media(prefers-reduced-motion:reduce){.reveal{animation:none;opacity:1;transform:none}
+    .spark path,.spark .area{animation:none;stroke-dashoffset:0;opacity:.5}}
+</style>
+</head>
+<body>
+<div class="viewport"><div class="stage">
+  <div class="chrome-top reveal">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <div class="path">~/ retrieval / <b>final_retrieval_strategy.md</b></div>
+    <div class="right">Internal Review · 2026·06·10</div>
+  </div>
+
+  <div class="body">
+    <div class="left">
+      <span class="tag reveal">Production RAG · 2025–2026</span>
+      <h1 class="reveal">Beyond the<br><span class="accent">baseline.</span></h1>
+      <p class="sub reveal">Two research reports reconciled against the benchmark evidence — and the <b>consolidated retrieval plan</b> for the Salesforce Knowledge corpus on Azure AI Search.</p>
+      <div class="pipe reveal">
+        <span class="node"><span class="k">in:</span> query</span><span class="arrow">→</span>
+        <span class="node on">retrieve</span><span class="arrow">→</span>
+        <span class="node on">rerank</span><span class="arrow">→</span>
+        <span class="node on">route</span><span class="arrow">→</span>
+        <span class="node"><span class="k">out:</span> answer</span>
+      </div>
+    </div>
+
+    <div class="right reveal">
+      <div class="readout-h">// retrieval readout</div>
+      <div class="metric"><span class="v teal">0.816</span><span class="l">Recall@5 · hybrid + reranker</span></div>
+      <div class="metric"><span class="v">+16 pts</span><span class="l">Agentic retrieval · complex queries</span></div>
+      <div class="metric"><span class="v amber">3 / 6</span><span class="l">Survey picks overturned by evidence</span></div>
+      <svg class="spark" viewBox="0 0 360 60" preserveAspectRatio="none">
+        <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#2DD4BF"/><stop offset="1" stop-color="#2DD4BF" stop-opacity="0"/>
+        </linearGradient></defs>
+        <path class="area" d="M0,46 L34,40 L72,44 L110,30 L150,33 L190,20 L230,24 L270,12 L310,15 L360,6 L360,60 L0,60 Z"/>
+        <path d="M0,46 L34,40 L72,44 L110,30 L150,33 L190,20 L230,24 L270,12 L310,15 L360,6"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="chrome-bot reveal">
+    <span><span class="ok">●</span> hybrid + rerank</span><span class="sep">|</span>
+    <span>contextual chunks</span><span class="sep">|</span>
+    <span>query-class routing</span>
+    <span class="r">EN / FR · ~4,867 article versions</span>
+  </div>
+</div></div>
+<script>
+  function fit(){const s=Math.min(innerWidth/1920,innerHeight/1080);
+    document.querySelector('.stage').style.transform=`scale(${s})`;}
+  addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>
