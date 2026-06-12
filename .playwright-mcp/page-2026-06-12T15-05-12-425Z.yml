@@ -1,0 +1,29 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - text: PRODUCTION RAG · 2025–2026
+        - generic [ref=e8]: //
+        - text: STRATEGY UPDATE · 2026·06·12
+      - heading "BEYOND THE BASELINE." [level=1] [ref=e9]:
+        - text: BEYOND THE
+        - text: BASELINE.
+      - generic [ref=e10]:
+        - paragraph [ref=e11]: "The consolidated retrieval plan for our bilingual knowledge assistant — what we build, what we set aside, and what's new this update: handling follow-up questions in conversation."
+        - generic [ref=e12]:
+          - generic [ref=e14]:
+            - generic [ref=e15]: "0.816"
+            - generic [ref=e16]: Recall@5 · the proven architecture
+          - generic [ref=e18]:
+            - generic [ref=e19]: 80/20
+            - generic [ref=e20]: Simple fast path / complex AI path
+          - generic [ref=e22]:
+            - generic [ref=e23]: +10–20%
+            - generic [ref=e24]: Multi-turn fix · new this update
+        - generic [ref=e25]:
+          - generic [ref=e28]:
+            - generic [ref=e29]: Retrieval Strategy
+            - generic [ref=e30]: Salesforce Knowledge · Azure AI Search · EN / FR
+          - generic [ref=e31]: 2026·06·12
+  - generic [ref=e33]: 01 / 10
+  - button "✏️"

@@ -72,7 +72,7 @@ _2026-06-10. Synthesizes two research reports against the corpus described in `r
 ```
 
 ### Phase 0 — Ingest hygiene (prerequisite, already planned)
-- HTML → clean Markdown, entity decode, near-duplicate suppression, drop empty/constant columns, **PII redaction before any embedding** (1,077 PII hits in `Knowledge_Content` per the data audit).
+- HTML → clean Markdown, entity decode, near-duplicate suppression, drop empty/constant columns, **PII redaction before any embedding** (1,077 PII hits in `Knowledge_Content` per the data audit). Near-duplicates that *contradict* each other are flagged to content owners rather than silently suppressed (§6).
 - Heading-aware chunking 400–800 tokens, parent–child IDs (`chunk_id` ← `SalesforceID`).
 
 ### Phase 1 (Sprints 1–2) — The verified-lift core
@@ -90,13 +90,16 @@ _2026-06-10. Synthesizes two research reports against the corpus described in `r
 8. **Query-class router** in front of retrieval (the convergent insight of both reports). Start with heuristics; upgrade to a small classifier trained on logged traffic.
 9. **Azure agentic retrieval** for the complex/conversational tier, behind a feature flag with fast-path fallback (preview, no SLA).
 10. **Query-rewrite fallback** for hard/misspelled/zero-result queries only (Azure native is preview and needs per-request `queryLanguage`; fr-FR/fr-CA supported — language detection from step 0 feeds this).
-11. **Groundedness gate + abstain/escalate** (Self-RAG principles, no retraining): answer must be supported by ≥1 retrieved citation; weak support triggers one retry, then escalation. Log critique signals for tuning.
+11. **Groundedness gate + abstain/escalate** (Self-RAG principles, no retraining): answer must be supported by ≥1 retrieved citation; weak support triggers one retry, then escalation. Log critique signals for tuning, plus cited article `VersionNumber` + publish date so stale-version citations are detectable (§6).
 12. **Cross-language policy decision**: choose whether EN queries may retrieve FR-only articles. If yes → multilingual embedding model + multilingual reranker (Azure SR is MIRACL-validated); BM25 will not cross languages.
+13. **Multi-turn conversation handling on the fast path** (§6): rewrite the latest user turn into a self-contained query from conversation history *before* retrieval (cheap LLM rewrite; QReCC/TopiOCQA-validated, ~10–20% retrieval gain over naive history handling — anaphora like "what about for Quebec?" currently retrieves nothing useful on the fast path). History policy: full history to the generator up to ~15 turns, rolling summary of older turns beyond that ("Lost in the Middle" guard, arXiv 2307.03172); no persistent memory store. The agentic slow path already consumes history natively (`messages` parameter).
 
 ### Backlog — re-open only on a named trigger
 | Item | Trigger to revisit |
 |---|---|
-| GraphRAG / LazyGraphRAG | Logs show recurring multi-hop or corpus-wide aggregate questions failing (e.g., >5% of thumbs-down traffic) |
+| GraphRAG / LazyGraphRAG | Logs show recurring multi-hop or corpus-wide aggregate questions failing (e.g., >5% of thumbs-down traffic). If triggered, start with a lightweight typed entity graph over `llm_entities` (§6) before full GraphRAG |
+| Persistent cross-session user memory (MemGPT-style consolidation tiers) | Product adds returning-user personalization or unbounded sessions; bounded 5–30-turn support sessions don't need it (§6) |
+| Stable-core-in-context (curated ~5–10k-token canonical-facts/glossary page in system prompt) | Traffic logs show heavy concentration on a small, stable FAQ core; pilot gated on golden set (§6) |
 | HyDE | A distinct vague/underspecified-query tier underperforms after routing exists; golden-set-gated pilot only |
 | ColBERT / SPLADE / late interaction | Migration off Azure AI Search, or a future Azure-native multi-vector capability |
 | Embedding fine-tuning | Golden set shows systematic domain-vocabulary misses that synonym maps + contextual chunks don't fix |
@@ -112,5 +115,16 @@ _2026-06-10. Synthesizes two research reports against the corpus described in `r
 
 Head-to-head evidence says retrieval quality at this corpus scale is won in three places: **what you index** (contextually enriched, deduplicated, PII-safe chunks), **how you rank** (hybrid recall + a strong reranker at the right depth), and **how you route** (cheap path for the 80% of simple lookups, LLM-planned retrieval for the complex 20%). Everything else — HyDE, multi-query, GraphRAG, late interaction — either measured flat-to-negative on corpora like this one or costs platform-breaking complexity for single-digit gains, so it sits in a triggered backlog rather than the roadmap. The golden set goes in first, not last, because every number above was only discoverable through exactly that measurement loop.
 
+## 6. Addendum (2026-06-12) — LLM-Wiki pattern sources evaluated
+
+Three externally supplied sources (Karpathy's "LLM Wiki" gist, the nashsu/llm_wiki implementation, rohitg00's "LLM Wiki v2" gist) were deep-analyzed against this plan in [llm_wiki_pattern_analysis.md](llm_wiki_pattern_analysis.md), with key claims independently verified. Verdicts:
+
+- **Wiki-as-replacement-for-RAG: ❌ skip.** Ruled out by the pattern's own decision tree — the corpus (~5M tokens) is ~50× past the ~100k-token context ceiling at which the wiki pattern wins. Consistent with the existing long-context verdict in §2.
+- **The sources corroborate the backbone** (hybrid BM25+vector+RRF; "compile once" enrichment ≙ our `llm_summary`/`llm_faqs` work) and change no existing verdict.
+- **One substantive adoption — multi-turn fast path** (new Phase 3 item 13): conversational query rewriting before retrieval + bounded-history policy (≤~15 turns full, rolling summary beyond). Evidence comes from published literature (QReCC, TopiOCQA, Lost in the Middle), not the sources themselves — the sources surfaced the gap.
+- **Minor extensions**: contradiction flagging at ingest (Phase 0); version/publish-date logging at the groundedness gate (item 11).
+- **Backlog additions**: persistent cross-session user memory (MemGPT-style tiers — wrong fit for bounded support sessions today); stable-core-in-context pilot; lightweight typed entity graph noted as the preferred first step if the GraphRAG trigger ever fires.
+- Discarded as not applicable: LLM-authored-content quality gates, event hooks/self-healing lint (this KB is Salesforce-authored); an unverifiable "95.2% LongMemEval-S" figure was traced to a summarization artifact and excluded.
+
 ## Sources
-Report B's source table applies ([retrieval_deep_research_report.md](retrieval_deep_research_report.md) §Sources): T2-RAGBench (arXiv 2604.01733, verified), Anthropic Contextual Retrieval, Azure hybrid/semantic-ranker/agentic-retrieval benchmarks, RAG-vs-GraphRAG systematic evaluation (arXiv 2502.11371), BenchmarkQED. Report A's source list (ColBERTv2, HyDE, RAG-Fusion, Self-RAG, GraphRAG originals) documents the techniques themselves.
+Report B's source table applies ([retrieval_deep_research_report.md](retrieval_deep_research_report.md) §Sources): T2-RAGBench (arXiv 2604.01733, verified), Anthropic Contextual Retrieval, Azure hybrid/semantic-ranker/agentic-retrieval benchmarks, RAG-vs-GraphRAG systematic evaluation (arXiv 2502.11371), BenchmarkQED. Report A's source list (ColBERTv2, HyDE, RAG-Fusion, Self-RAG, GraphRAG originals) documents the techniques themselves. Addendum (§6) sources: Karpathy LLM Wiki gist, nashsu/llm_wiki, rohitg00 LLM Wiki v2 gist, QReCC (arXiv 2010.04898), Lost in the Middle (arXiv 2307.03172), MemGPT (arXiv 2310.08560), Azure agentic-retrieval docs — per-claim verification table in [llm_wiki_pattern_analysis.md](llm_wiki_pattern_analysis.md) §5.
